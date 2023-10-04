@@ -9,6 +9,13 @@
 //! - Minimal overhead
 //! - Supports any type that implements `Serialize` and `Deserialize` from the `serde` crate
 //!
+//! ## Supported Crud Operations
+//!
+//! - Set
+//! - Get
+//! - Update
+//! - Delete
+//!
 //! # Installation
 //!
 //! ```bash
