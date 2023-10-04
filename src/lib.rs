@@ -41,8 +41,8 @@ use serde::de::DeserializeOwned;
 /// The client for the QuickKV database
 ///
 /// # Examples
-/// ```rs
-/// use quickkv::QuickClient;
+/// ```rust
+/// use quick_kv::QuickClient;
 ///
 /// fn main() {
 ///     let mut client = QuickClient::new(None).unwrap();
@@ -71,8 +71,8 @@ pub struct BinaryKv<T>
     /// This is stored as a generic type so that any type can be stored
     ///
     /// # Examples
-    /// ```rs
-    /// use quickkv::BinaryKv;
+    /// ```rust
+    /// use quick_kv::BinaryKv;
     ///
     /// BinaryKv::<String> {
     ///    key: String::from("hello"),
