@@ -20,8 +20,10 @@ cargo add quick-kv
 use quick_kv::QuickClient;
 
 fn main() {
-    let client = QuickClient::new(None)
+    let mut client = QuickClient::new(None).unwrap();
 
+    client.set("key", "value".to_string());
+    
     let result = client.get("key").unwrap();
 
     println!("{}", result);

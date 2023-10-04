@@ -53,12 +53,19 @@ impl<'de, T> Deserialize<'de> for BinaryKv<T>
 }
 
 impl QuickClient {
-    pub fn new(path: PathBuf) -> io::Result<Self> {
+    pub fn new(path: Option<PathBuf>) -> io::Result<Self> {
+        let path = match path {
+            Some(path) => path,
+            None => {
+                PathBuf::from("quick.db")
+            }
+        };
+
         let file = match OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(&path)
+            .open(path)
         {
             Ok(file) => file,
             Err(e) => {
@@ -154,7 +161,7 @@ mod tests {
     fn test_set() {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
-        let mut client = QuickClient::new(tmp_file).unwrap();
+        let mut client = QuickClient::new(Some(tmp_file)).unwrap();
         let value = String::from("Hello World!");
         client.set::<String>("hello", value).unwrap();
     }
@@ -163,11 +170,11 @@ mod tests {
     fn test_get() {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
-        let mut client = QuickClient::new(tmp_file).unwrap();
+        let mut client = QuickClient::new(Some(tmp_file)).unwrap();
         let value = String::from("Hello World!");
         client.set::<String>("hello2", value.clone()).unwrap();
 
-        let result = client.get("hello2").unwrap();
+        let result = client.get::<String>("hello2").unwrap();
         assert_eq!(result, Some(value));
     }
 
@@ -175,7 +182,7 @@ mod tests {
     fn test_get_not_found() {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
-        let mut client = QuickClient::new(tmp_file).unwrap();
+        let mut client = QuickClient::new(Some(tmp_file)).unwrap();
         let value = String::from("Hello World!");
         client.set::<String>("hello3", value).unwrap();
 
@@ -187,7 +194,7 @@ mod tests {
     fn test_get_multiple() {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
-        let mut client = QuickClient::new(tmp_file).unwrap();
+        let mut client = QuickClient::new(Some(tmp_file)).unwrap();
         let value = String::from("Hello World!");
         client.set::<String>("hello5", value.clone()).unwrap();
         client.set::<String>("hello6", value.clone()).unwrap();
