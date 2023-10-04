@@ -1,10 +1,11 @@
 [package]
 name = "quick-kv"
-description = "A Fast and Simple Key-Value Store"
-version = "0.0.0"
+description = "A Fast Key-Value File Database"
+version = "0.1.0"
 edition = "2021"
 publish = true
 repository = "https://github.com/ThatGuyJamal/quick-kv"
+documentation = "https://docs.rs/quick-kv"
 
 [dependencies]
 bincode = "1.3.3"
