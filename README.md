@@ -4,9 +4,9 @@ A Fast Key Value Database in rust.
 
 ## Features
 
-- [ ] Binary Based Data
+- [x] Binary Based Data
+- [x] Multiple Data Type Support
 - [ ] Multiple Database Management
-- [ ] Multiple Data Type Support
 
 ## Installation
 

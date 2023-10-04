@@ -9,6 +9,12 @@
 //! - Minimal overhead
 //! - Supports any type that implements `Serialize` and `Deserialize` from the `serde` crate
 //!
+//! # Installation
+//!
+//! ```bash
+//! cargo add quick-kv
+//! ```
+//!
 //! # Why use QuickKV?
 //!
 //! QuickKV is meant to be used in situations where you need to store data, but don't want to deal with the overhead of a full fledged database.
