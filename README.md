@@ -22,9 +22,9 @@ use quick_kv::QuickClient;
 fn main() {
     let mut client = QuickClient::new(None).unwrap();
 
-    client.set("key", "value".to_string());
+    client.set::<String>("key", "value".to_string());
     
-    let result = client.get("key").unwrap();
+    let result = client.get::<String>("key").unwrap();
 
     println!("{}", result);
 }
