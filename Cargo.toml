@@ -11,7 +11,7 @@ authors = ["ThatGuyJamal <thatguyjamalbiz@gmai.com>"]
 exclude = ["examples/*", ".gitignore", ".github/"]
 readme = "README.md"
 
-categories = ["database", "key-value", "binary"]
+categories = ["database", "caching"]
 license = "MIT"
 
 [dependencies]
