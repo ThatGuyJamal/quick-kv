@@ -29,14 +29,14 @@
 //! }
 //! ```
 
+use bincode::deserialize_from;
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use serde::{Deserialize, Deserializer, Serialize};
-use bincode::deserialize_from;
-use serde::de::DeserializeOwned;
 
 /// The client for the QuickKV database
 ///
@@ -61,8 +61,8 @@ pub struct QuickClient {
 /// The data structure used to store key-value pairs in the database
 #[derive(Serialize, PartialEq, Debug, Clone)]
 pub struct BinaryKv<T>
-    where
-        T: Serialize + Clone + Debug,
+where
+    T: Serialize + Clone + Debug,
 {
     /// The key of the key-value pair
     pub key: String,
@@ -83,8 +83,8 @@ pub struct BinaryKv<T>
 }
 
 impl<T> BinaryKv<T>
-    where
-        T: Serialize + Clone  + Debug,
+where
+    T: Serialize + Clone + Debug,
 {
     fn new(key: String, value: T) -> Self {
         BinaryKv { key, value }
@@ -92,12 +92,12 @@ impl<T> BinaryKv<T>
 }
 
 impl<'de, T> Deserialize<'de> for BinaryKv<T>
-    where
-        T: Deserialize<'de> + Serialize + Clone + Debug,
+where
+    T: Deserialize<'de> + Serialize + Clone + Debug,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         #[derive(Deserialize)]
         struct ValueHelper<T> {
@@ -129,9 +129,7 @@ impl QuickClient {
     pub fn new(path: Option<PathBuf>) -> io::Result<Self> {
         let path = match path {
             Some(path) => path,
-            None => {
-                PathBuf::from("quick.db")
-            }
+            None => PathBuf::from("quick.db"),
         };
 
         let file = match OpenOptions::new()
@@ -170,27 +168,33 @@ impl QuickClient {
     ///   client.set::<String>("hello", String::from("Hello World!")).unwrap();
     /// }
     pub fn set<T>(&mut self, key: &str, value: T) -> io::Result<()>
-        where
-            T: Serialize + DeserializeOwned + Clone + Debug,
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
     {
-        let mut file = match self.file.lock() {
-            Ok(file) => file,
-            Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
-            }
-        };
+        if self.get::<T>(key)?.is_none() {
+            // Key doesn't exist, add a new key-value pair
+            let mut file = match self.file.lock() {
+                Ok(file) => file,
+                Err(e) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::Other,
+                        format!("Error locking file: {:?}", e),
+                    ));
+                }
+            };
 
-        let data = BinaryKv::new(key.to_string(), value.clone());
+            let data = BinaryKv::new(key.to_string(), value.clone());
 
-        let serialized = match bincode::serialize(&data) {
-            Ok(data) => data,
-            Err(e) => panic!("Error serializing data: {:?}", e),
-        };
+            let serialized = match bincode::serialize(&data) {
+                Ok(data) => data,
+                Err(e) => panic!("Error serializing data: {:?}", e),
+            };
 
-        file.write_all(&serialized)?;
+            file.write_all(&serialized)?;
+        } else {
+            // Key already exists, update the value
+            self.update(key, value)?;
+        }
 
         Ok(())
     }
@@ -212,8 +216,8 @@ impl QuickClient {
     ///   assert_eq!(result, Some(String::from("Hello World!")));
     /// }
     pub fn get<T>(&mut self, key: &str) -> io::Result<Option<T>>
-        where
-            T: Serialize + DeserializeOwned + Clone + Debug,
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
     {
         let mut file = match self.file.lock() {
             Ok(file) => file,
@@ -235,7 +239,10 @@ impl QuickClient {
         let mut cursor = io::Cursor::new(&buffer);
         while cursor.position() < cursor.get_ref().len() as u64 {
             match deserialize_from::<_, BinaryKv<T>>(&mut cursor) {
-                Ok(BinaryKv { key: entry_key, value }) if key == entry_key => {
+                Ok(BinaryKv {
+                    key: entry_key,
+                    value,
+                }) if key == entry_key => {
                     return Ok(Some(value));
                 }
                 Err(e) => {
@@ -274,8 +281,8 @@ impl QuickClient {
     ///    assert_eq!(result, None);
     /// }
     pub fn delete<T>(&mut self, key: &str) -> io::Result<()>
-        where
-            T: Serialize + DeserializeOwned + Clone + Debug,
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
     {
         let mut file = match self.file.lock() {
             Ok(file) => file,
@@ -349,8 +356,8 @@ impl QuickClient {
     ///   assert_eq!(result, Some(String::from("Hello World!")));
     /// }
     pub fn update<T>(&mut self, key: &str, value: T) -> io::Result<()>
-        where
-            T: Serialize + DeserializeOwned + Clone + Debug,
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
     {
         let mut file = match self.file.lock() {
             Ok(file) => file,
@@ -428,16 +435,46 @@ mod tests {
     fn test_set() {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
+
         let mut client = QuickClient::new(Some(tmp_file)).unwrap();
+
         let value = String::from("Hello World!");
         client.set::<String>("hello", value).unwrap();
+    }
+
+    #[test]
+    fn test_set_multiple_keys_with_same_name() {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickClient::new(Some(tmp_file.clone())).unwrap();
+
+        // Set the initial value for the key
+        client
+            .set::<String>("hello9", String::from("Hello World!"))
+            .unwrap();
+
+        // Verify that the initial value is correct
+        let result = client.get::<String>("hello9").unwrap();
+        assert_eq!(result, Some(String::from("Hello World!")));
+
+        // Set a new value for the same key
+        client
+            .set::<String>("hello9", String::from("Updated Value"))
+            .unwrap();
+
+        // Verify that the value has been updated
+        let result2 = client.get::<String>("hello9").unwrap();
+        assert_eq!(result2, Some(String::from("Updated Value")));
     }
 
     #[test]
     fn test_get() {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
+
         let mut client = QuickClient::new(Some(tmp_file)).unwrap();
+
         let value = String::from("Hello World!");
         client.set::<String>("hello2", value.clone()).unwrap();
 
@@ -449,11 +486,15 @@ mod tests {
     fn test_get_not_found() {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
+
         let mut client = QuickClient::new(Some(tmp_file)).unwrap();
+
         let value = String::from("Hello World!");
         client.set::<String>("hello3", value).unwrap();
 
-        let result = client.get::<String>("doesnotexist-124319284791827948179").unwrap();
+        let result = client
+            .get::<String>("doesnotexist-124319284791827948179")
+            .unwrap();
         assert_eq!(result, None);
     }
 
@@ -461,8 +502,10 @@ mod tests {
     fn test_get_multiple() {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
+
         let mut client = QuickClient::new(Some(tmp_file)).unwrap();
         let value = String::from("Hello World!");
+
         client.set::<String>("hello5", value.clone()).unwrap();
         client.set::<String>("hello6", value.clone()).unwrap();
 
@@ -495,11 +538,17 @@ mod tests {
 
         let mut client = QuickClient::new(Some(tmp_file.clone())).unwrap();
 
-        client.set::<String>("hello8", String::from("Hello World!")).unwrap();
+        client
+            .set::<String>("hello8", String::from("Hello World!"))
+            .unwrap();
+
         let result = client.get::<String>("hello8").unwrap();
         assert_eq!(result, Some(String::from("Hello World!")));
 
-        client.update::<String>("hello8", String::from("Hello World! 2")).unwrap();
+        client
+            .update::<String>("hello8", String::from("Hello World! 2"))
+            .unwrap();
+
         let result2 = client.get::<String>("hello8").unwrap();
         assert_eq!(result2, Some(String::from("Hello World! 2")));
     }
