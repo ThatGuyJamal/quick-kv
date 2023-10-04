@@ -47,7 +47,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
-use std::io::{self, Read, Seek, Write};
+use std::io::{self, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -142,7 +142,7 @@ impl QuickClient {
     pub fn new(path: Option<PathBuf>) -> io::Result<Self> {
         let path = match path {
             Some(path) => path,
-            None => PathBuf::from("quick.db"),
+            None => PathBuf::from("db.qkv"),
         };
 
         let file = match OpenOptions::new()
@@ -196,6 +196,8 @@ impl QuickClient {
                 }
             };
 
+            let mut writer = io::BufWriter::new(&mut *file);
+
             let data = BinaryKv::new(key.to_string(), value.clone());
 
             let serialized = match bincode::serialize(&data) {
@@ -203,7 +205,11 @@ impl QuickClient {
                 Err(e) => panic!("Error serializing data: {:?}", e),
             };
 
-            file.write_all(&serialized)?;
+            // Write the serialized data to the file
+            writer.write_all(&serialized)?;
+
+            // Flush the writer to ensure data is written to the file
+            writer.flush()?;
         } else {
             // Key already exists, update the value
             self.update(key, value)?;
@@ -242,16 +248,13 @@ impl QuickClient {
             }
         };
 
-        let mut buffer: Vec<u8> = Vec::new();
+        let mut reader = io::BufReader::new(&mut *file);
+        // Seek to the beginning of the file
+        reader.seek(SeekFrom::Start(0))?;
 
-        // Read the entire contents of the file into the buffer
-        file.seek(io::SeekFrom::Start(0))?; // Move to the beginning of the file
-        file.read_to_end(&mut buffer)?;
-
-        // Deserialize each entry in the buffer and find the matching key
-        let mut cursor = io::Cursor::new(&buffer);
-        while cursor.position() < cursor.get_ref().len() as u64 {
-            match deserialize_from::<_, BinaryKv<T>>(&mut cursor) {
+        // Read and deserialize entries until the end of the file is reached
+        loop {
+            match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
                 Ok(BinaryKv {
                     key: entry_key,
                     value,
@@ -307,21 +310,17 @@ impl QuickClient {
             }
         };
 
-        let mut buffer: Vec<u8> = Vec::new();
-        let mut updated_buffer: Vec<u8> = Vec::new();
+        let mut reader = io::BufReader::new(&mut *file);
 
-        // Read the entire contents of the file into the buffer
-        file.seek(io::SeekFrom::Start(0))?; // Move to the beginning of the file
-        file.read_to_end(&mut buffer)?;
+        // Create a temporary buffer to store the updated data
+        let mut updated_buffer = Vec::new();
 
-        // Deserialize each entry in the buffer and check for the matching key
-        let mut cursor = io::Cursor::new(&buffer);
-        while cursor.position() < cursor.get_ref().len() as u64 {
-            match deserialize_from::<_, BinaryKv<T>>(&mut cursor) {
+        // Read and process entries
+        loop {
+            match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
                 Ok(BinaryKv { key: entry_key, .. }) if key != entry_key => {
                     // Keep entries that don't match the key
-                    updated_buffer.extend_from_slice(cursor.get_ref());
-                    break;
+                    updated_buffer.extend_from_slice(reader.buffer());
                 }
                 Ok(_) => {
                     // Skip entries that match the key
@@ -337,10 +336,18 @@ impl QuickClient {
             }
         }
 
+        // Close the file and open it in write mode for writing
+        drop(reader); // Release the reader
+
+        let mut writer = io::BufWriter::new(&mut *file);
+
         // Truncate the file and write the updated data back
-        file.set_len(0)?;
-        file.seek(io::SeekFrom::Start(0))?;
-        file.write_all(&updated_buffer)?;
+        writer.get_mut().set_len(0)?;
+        writer.seek(SeekFrom::Start(0))?;
+        writer.write_all(&updated_buffer)?;
+
+        // Flush the writer to ensure data is written to the file
+        writer.flush()?;
 
         Ok(())
     }
@@ -372,6 +379,7 @@ impl QuickClient {
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
+        // Lock the file and use a buffered reader
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
@@ -381,19 +389,17 @@ impl QuickClient {
                 ));
             }
         };
+        let mut reader = io::BufReader::new(&mut *file);
 
-        let mut buffer: Vec<u8> = Vec::new();
+        // Seek to the beginning of the file
+        reader.seek(SeekFrom::Start(0))?;
 
-        // Read the entire contents of the file into the buffer
-        file.seek(io::SeekFrom::Start(0))?; // Move to the beginning of the file
-        file.read_to_end(&mut buffer)?;
-
-        let mut cursor = io::Cursor::new(&mut buffer);
-        let mut updated_entries: Vec<BinaryKv<T>> = Vec::new();
+        let mut updated_entries = Vec::new();
         let mut updated = false;
 
-        while cursor.position() < cursor.get_ref().len() as u64 {
-            match deserialize_from::<_, BinaryKv<T>>(&mut cursor) {
+        // Read and process entries
+        loop {
+            match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
                 Ok(entry) => {
                     if key == &entry.key {
                         // Update the value associated with the key
@@ -416,24 +422,33 @@ impl QuickClient {
             }
         }
 
-        // If no updates were made, return an error
         if !updated {
+            // Key not found
             return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                format!("Key '{}' not found for update", key),
+                io::ErrorKind::Other,
+                format!("Key not found: {}", key),
             ));
         }
 
-        // Clear the file contents and write the updated entries back to the file
-        file.seek(io::SeekFrom::Start(0))?; // Move to the beginning of the file
-        file.set_len(0)?; // Clear the file contents
+        // Close the file and open it in write mode
+        drop(reader); // Release the reader
+
+        // Reopen the file in write mode for writing
+        let mut writer = io::BufWriter::new(&mut *file);
+
+        // Truncate the file and write the updated data back
+        writer.get_mut().set_len(0)?;
+        writer.seek(SeekFrom::Start(0))?;
         for entry in updated_entries.iter() {
             let serialized = match bincode::serialize(entry) {
                 Ok(data) => data,
                 Err(e) => panic!("Error serializing data: {:?}", e),
             };
-            file.write_all(&serialized)?;
+            writer.write_all(&serialized)?;
         }
+
+        // Flush the writer to ensure data is written to the file
+        writer.flush()?;
 
         Ok(())
     }
@@ -564,5 +579,29 @@ mod tests {
 
         let result2 = client.get::<String>("hello8").unwrap();
         assert_eq!(result2, Some(String::from("Hello World! 2")));
+    }
+
+    #[test]
+    fn test_vector_injection() {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickClient::new(Some(tmp_file.clone())).unwrap();
+
+        let mut v = Vec::new();
+
+        for i in 0..100 {
+            v.push(i);
+        }
+
+        client.set::<Vec<i32>>("vec", v.clone()).unwrap();
+
+        let result = client.get::<Vec<i32>>("vec").unwrap().unwrap();
+
+        for i in 0..100 {
+            assert_eq!(result[i], v[i]);
+        }
+
+        assert_eq!(result.len(), v.len());
     }
 }

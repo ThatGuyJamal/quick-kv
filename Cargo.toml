@@ -1,14 +1,14 @@
 [package]
 name = "quick-kv"
-description = "A Fast Key-Value File Database"
-version = "0.1.0"
+description = "A fast and minimal key-value database."
+version = "0.1.1"
 edition = "2021"
 repository = "https://github.com/ThatGuyJamal/quick-kv"
 documentation = "https://docs.rs/quick-kv"
 publish = true
 
 authors = ["ThatGuyJamal <thatguyjamalbiz@gmai.com>"]
-exclude = ["examples/*", ".gitignore", ".github/"]
+exclude = ["examples/*", ".gitignore", ".github/", ".idea/", ".vscode/"]
 readme = "README.md"
 
 categories = ["database", "caching"]
