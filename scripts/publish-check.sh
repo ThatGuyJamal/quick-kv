@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Makes sure no db files exist before running all the test.
+if [ -f "../db.qkv" ]; then
+  rm ../db.qkv
+fi
+
 # Check if the current directory is a Rust crate
 if ! cargo metadata --no-deps --format-version 1 >/dev/null 2>&1; then
   echo "Error: Not a Rust crate directory. Please run this script in your crate's root directory."
