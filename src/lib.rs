@@ -19,9 +19,64 @@
 //! fledged database. It is also useful for storing data that does’t need to be accessed very often, but still needs to be stored.
 //! QuickKV also has the benefit of storing data in a file as binary making it faster than other file formats for data storage.
 //!
-//! # Examples
+//! # Working with Data in QuickKV
 //!
-//! Coming soon...
+//! ## Value
+//!
+//! When working with data using QuickKV, you will mostly be wrapping it in a [Value](https://docs.rs/quick-kv/latest/quick_kv/enum.Value.html) enum.
+//! This Enum is used to tell the encoder what type of data you are storing. It also allows you to store multiple types of data in the same key.
+//!
+//! ## TypedValue
+//!
+//! The [TypedValue](https://docs.rs/quick-kv/latest/quick_kv/enum.TypedValue.html) enum is used to store data of types `Vec<T>`, `HashMap<String, V>`, and `Option<T>`.
+//! These datatype need generic parameters to be typesafe and allow smart intellisense, so they are in there own enum.
+//!
+//! ## Into methods
+//!
+//! Both `Value` and `TypedValue` support helper methods for converting a value into a raw type or converting a raw type into a `Value` or `TypedValue`.
+//!
+//! This is usefull because when you wrap data inside of Value::String(), the compiler things its only an Enum of any value and not a String. We can fix this by:
+//! ```rust
+//! use quick_kv::{IntoValue, Value};
+//!
+//! Value::String("i am a real string!".to_string()).into_string();
+//! ```
+//!
+//! Under the hood, into simply checks if the Value matches the type you are trying to convert it to and then unwraps it. This means that if you try to convert a Value::Int(5) into a String, it will panic
+//! and crash your program. Right now, I think crashing is good as this is a critical mistake that should be noticed if you are using into.
+//!
+//! ## Using Operations
+//! ```rust
+//! use quick_kv::{QuickClient, IntoValue, Value, TypedValue, IntoTypedValue};
+//!
+//! let mut client = QuickClient::new(None).unwrap();
+//!
+//! // Set a i32 into the database.
+//! client.set("i32", Value::I32(5)).unwrap();
+//!
+//! // Get the i32 from the database and cast the type to the get function.
+//! let our_i32 = client.get::<i32>("i32").unwrap().unwrap();
+//!
+//! assert_eq!(our_i32, 5);
+//!
+//! client.delete::<i32>("i32").unwrap();
+//!
+//! let mut list_of_people = vec!["Ray".to_string(), "Noa".to_string(), "Kian".to_string()];
+//!
+//! client.set("people", TypedValue::<String>::Vec(list_of_people.clone())).unwrap();
+//!
+//! let our_people = client.get::<TypedValue<String>>("people").unwrap().unwrap().into_vec();
+//!
+//! assert_eq!(our_people, list_of_people);
+//!
+//! list_of_people.push("John".to_string());
+//!
+//! client.set("people", TypedValue::<String>::Vec(list_of_people.clone())).unwrap();
+//!
+//! let our_people = client.get::<TypedValue<String>>("people").unwrap().unwrap().into_vec();
+//!
+//! assert_eq!(our_people, list_of_people);
+//!
 
 mod client;
 mod test;

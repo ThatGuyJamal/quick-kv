@@ -14,6 +14,10 @@ A Fast Key Value Database in rust.
 cargo add quick-kv
 ```
 
+## Documentation
+
+For the most detailed documentation, please see the [docs.rs](https://docs.rs/quick-kv) page.
+
 ## Usage
 
 ```rust
