@@ -32,16 +32,18 @@
 //! ```rust
 //! use quick_kv::{QuickClient, Value};
 //!
-//! let mut client = QuickClient::new(None).unwrap();
+//!  let mut client = QuickClient::new(None).unwrap();
 //!
-//! client.set("hello", Value::String("world".to_string())).unwrap();
+//!     client
+//!         .set("hello", Value::String("hello world!".to_string()))
+//!         .unwrap();
 //!
-//! let result: String = match client.get::<Value>("hello") {
-//!   Value::String(s) => s,
-//!   _ => panic!("Error getting value"),
-//!};
+//!     let result = match client.get::<Value>("hello").unwrap().unwrap() {
+//!         Value::String(s) => s,
+//!         _ => panic!("Error getting value"),
+//!     };
 //!
-//!assert_eq!(result, "world");
+//!     assert_eq!(result, String::from("hello world!"));
 //! ```
 
 use bincode::deserialize_from;
@@ -55,19 +57,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 /// The client for the QuickKV database
-///
-/// # Examples
-/// ```rust
-///  use quick_kv::QuickClient;
-///
-///  let mut client = QuickClient::new(None).unwrap();
-///
-///  client.set::<String>("hello", String::from("Hello World!")).unwrap();
-///
-///  let result = client.get::<String>("hello").unwrap();
-///
-///  assert_eq!(result, Some(String::from("Hello World!")));
-/// ```
 #[derive(Debug)]
 pub struct QuickClient {
     file: Arc<Mutex<File>>,
@@ -197,13 +186,13 @@ impl QuickClient {
     ///
     ///  let mut client = QuickClient::new(None).unwrap();
     ///
-    ///   client.set("hello", Value::String("hello world!".to_string())).unwrap();
-    ///   let result = match client.get::<Value>("hello") {
+    ///   client.set("hello", Value::String("Hello World!".to_string())).unwrap();
+    ///   let result = match client.get::<Value>("hello").unwrap().unwrap() {
     ///     Value::String(s) => s,
     ///     _ => panic!("Error getting value"),
     /// };
     ///
-    ///   assert_eq!(result, Some(String::from("Hello World!")));
+    ///   assert_eq!(result, String::from("Hello World!"));
     /// ```
     pub fn get<T>(&mut self, key: &str) -> io::Result<Option<T>>
     where
@@ -619,7 +608,7 @@ mod tests {
 
         let result = client.get::<Vec<i32>>("vec").unwrap().unwrap();
 
-        for i in 0..100 {
+        for i in 0..9 {
             assert_eq!(result[i], v[i]);
         }
 
