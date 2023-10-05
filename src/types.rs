@@ -243,6 +243,18 @@ impl RawIntoValue for u32 {
     }
 }
 
+impl RawIntoValue for u64 {
+    fn into_value(self) -> Value {
+        Value::U64(self)
+    }
+}
+
+impl RawIntoValue for u128 {
+    fn into_value(self) -> Value {
+        Value::U128(self)
+    }
+}
+
 impl RawIntoValue for usize {
     fn into_value(self) -> Value {
         Value::Usize(self)
@@ -264,6 +276,18 @@ impl RawIntoValue for i16 {
 impl RawIntoValue for i32 {
     fn into_value(self) -> Value {
         Value::I32(self)
+    }
+}
+
+impl RawIntoValue for i64 {
+    fn into_value(self) -> Value {
+        Value::I64(self)
+    }
+}
+
+impl RawIntoValue for i128 {
+    fn into_value(self) -> Value {
+        Value::I128(self)
     }
 }
 
@@ -292,6 +316,7 @@ impl RawIntoValue for f64 {
 pub enum TypedValue<T> {
     Vec(Vec<T>),
     Hash(HashMap<String, T>),
+
 }
 
 pub trait IntoTypedValue<T> {
