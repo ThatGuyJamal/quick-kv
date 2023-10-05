@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::types::IntoTypedValue;
-    use crate::{QuickClient, TypedValue};
+    use crate::prelude::*;
     use std::collections::HashMap;
     use tempfile::tempdir;
 

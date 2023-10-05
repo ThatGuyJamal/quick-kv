@@ -37,7 +37,7 @@
 //!
 //! This is usefull because when you wrap data inside of Value::String(), the compiler things its only an Enum of any value and not a String. We can fix this by:
 //! ```rust
-//! use quick_kv::{IntoValue, Value};
+//! use quick_kv::prelude::*;
 //!
 //! Value::String("i am a real string!".to_string()).into_string();
 //! ```
@@ -47,7 +47,7 @@
 //!
 //! ## Using Operations
 //! ```rust
-//! use quick_kv::{QuickClient, IntoValue, Value, TypedValue, IntoTypedValue};
+//! use quick_kv::prelude::*;
 //!
 //! let mut client = QuickClient::new(None).unwrap();
 //!
@@ -83,7 +83,7 @@
 //! the right data is being saved into the database. Keep in mind, QuickKV is a binary based database, so it
 //! needs the right information to work.
 //! ```rust
-//! use quick_kv::{QuickClient, IntoValue, Value};
+//! use quick_kv::prelude::*;
 //!
 //! let mut client = QuickClient::new(None).unwrap();
 //!
@@ -95,11 +95,9 @@
 //! - `into_vec` and `into_hashmap` are helper methods that allow you to convert a `TypedValue` into a `Vec<T>` or `HashMap<String, T>`.
 //! If you dont use this (not required) then the get method will only return `TypeValue<T>`. This is the same for `Value`, but you can use `into_<type>` to convert it.
 
-mod client;
-mod test;
-mod types;
+pub mod client;
+pub mod prelude;
+pub mod types;
 
-pub use client::QuickClient;
-pub use types::{
-    BinaryKv, IntoTypedValue, IntoValue, RawIntoTypedValue, RawIntoValue, TypedValue, Value,
-};
+#[cfg(test)]
+mod test;

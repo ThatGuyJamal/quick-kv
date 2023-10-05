@@ -316,7 +316,6 @@ impl RawIntoValue for f64 {
 pub enum TypedValue<T> {
     Vec(Vec<T>),
     Hash(HashMap<String, T>),
-
 }
 
 pub trait IntoTypedValue<T> {

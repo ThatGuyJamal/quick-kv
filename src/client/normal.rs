@@ -1,4 +1,5 @@
-use crate::BinaryKv;
+use crate::client::Client;
+use crate::types::BinaryKv;
 use bincode::deserialize_from;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -14,8 +15,8 @@ pub struct QuickClient {
     file: Arc<Mutex<File>>,
 }
 
-impl QuickClient {
-    pub fn new(path: Option<PathBuf>) -> io::Result<Self> {
+impl Client for QuickClient {
+    fn new(path: Option<PathBuf>) -> io::Result<Self> {
         let path = match path {
             Some(path) => path,
             None => PathBuf::from("db.qkv"),
@@ -41,7 +42,7 @@ impl QuickClient {
         })
     }
 
-    pub fn get<T>(&mut self, key: &str) -> io::Result<Option<T>>
+    fn get<T>(&mut self, key: &str) -> io::Result<Option<T>>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
@@ -84,7 +85,7 @@ impl QuickClient {
         Ok(None)
     }
 
-    pub fn set<T>(&mut self, key: &str, value: T) -> io::Result<()>
+    fn set<T>(&mut self, key: &str, value: T) -> io::Result<()>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
@@ -122,7 +123,7 @@ impl QuickClient {
         Ok(())
     }
 
-    pub fn delete<T>(&mut self, key: &str) -> io::Result<()>
+    fn delete<T>(&mut self, key: &str) -> io::Result<()>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
@@ -178,7 +179,7 @@ impl QuickClient {
         Ok(())
     }
 
-    pub fn update<T>(&mut self, key: &str, value: T) -> io::Result<()>
+    fn update<T>(&mut self, key: &str, value: T) -> io::Result<()>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
@@ -256,27 +257,42 @@ impl QuickClient {
         Ok(())
     }
 
-    pub fn clear(&mut self) -> io::Result<()> {
+    fn clear(&mut self) -> io::Result<()> {
         todo!()
     }
 
-    pub fn get_all() {
+    fn get_all<T>(&mut self) -> io::Result<Vec<T>>
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
+    {
         todo!()
     }
 
-    pub fn get_many() {
+    fn get_many<T>(&mut self, keys: Vec<String>) -> io::Result<Vec<T>>
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
+    {
         todo!()
     }
 
-    pub fn set_many() {
+    fn set_many<T>(&mut self, values: Vec<BinaryKv<T>>) -> io::Result<()>
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
+    {
         todo!()
     }
 
-    pub fn delete_many() {
+    fn delete_many<T>(&mut self, keys: Vec<String>) -> io::Result<()>
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
+    {
         todo!()
     }
 
-    pub fn update_many() {
+    fn update_many<T>(&mut self, values: Vec<BinaryKv<T>>) -> io::Result<()>
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
+    {
         todo!()
     }
 }

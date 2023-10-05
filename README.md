@@ -22,7 +22,7 @@ For the most detailed documentation, please see the [docs.rs](https://docs.rs/qu
 
 ```rust
 use std::collections::HashMap;
-use quick_kv::*;
+use quick_kv::prelude::*;
 
 fn main() {
     let mut client = QuickClient::new(None).unwrap();
