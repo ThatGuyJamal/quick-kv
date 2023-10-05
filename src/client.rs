@@ -122,24 +122,6 @@ impl QuickClient {
         Ok(())
     }
 
-    /// Deletes a key-value pair from the database
-    ///
-    /// `key` The key of the key-value pair
-    ///
-    /// # Examples
-    /// ```rust
-    ///  use quick_kv::{QuickClient, Value};
-    ///
-    ///  let mut client = QuickClient::new(None).unwrap();
-    ///
-    ///  client.set("hello", Value::String("hello world!".to_string())).unwrap();
-    ///
-    ///  client.delete::<Value>("hello").unwrap();
-    ///
-    ///  let result = client.get::<Value>("hello").unwrap();
-    ///
-    ///  assert_eq!(result, None);
-    /// ```
     pub fn delete<T>(&mut self, key: &str) -> io::Result<()>
         where
             T: Serialize + DeserializeOwned + Clone + Debug,
@@ -196,28 +178,6 @@ impl QuickClient {
         Ok(())
     }
 
-    /// Updates a key-value pair in the database
-    ///
-    /// `key` The key of the key-value pair
-    ///
-    /// `value` The new value of the key-value pair
-    ///
-    /// If no key is found, an error is returned and the database is not updated.
-    ///
-    /// # Examples
-    /// ```rust
-    ///  use quick_kv::{QuickClient, Value};
-    ///
-    ///  let mut client = QuickClient::new(None).unwrap();
-    ///
-    ///  client.set("hello", Value::String("hello world!".to_string())).unwrap();
-    ///
-    ///  client.update::<Value>("hello", Value::String("hello world! 2".to_string())).unwrap();
-    ///
-    ///  let result = client.get::<Value>("hello").unwrap();
-    ///
-    ///  assert_eq!(result, Some(Value::String("hello world! 2".to_string())));
-    /// ```
     pub fn update<T>(&mut self, key: &str, value: T) -> io::Result<()>
         where
             T: Serialize + DeserializeOwned + Clone + Debug,

@@ -11,18 +11,6 @@ pub struct BinaryKv<T>
     /// The key of the key-value pair
     pub key: String,
     /// The value of the key-value pair
-    ///
-    /// This is stored as a generic type so that any type can be stored
-    ///
-    /// # Examples
-    /// ```rust
-    /// use quick_kv::{BinaryKv, Value};
-    ///
-    /// BinaryKv::<Value> {
-    ///    key: String::from("hello"),
-    ///    value: Value::String("hello world".to_string()),
-    /// };
-    /// ```
     pub value: T,
 }
 
