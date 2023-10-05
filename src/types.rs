@@ -1,12 +1,12 @@
-use std::collections::HashMap;
 use serde::{Deserialize, Deserializer, Serialize};
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 /// The data structure used to store key-value pairs in the database
 #[derive(Serialize, PartialEq, Debug, Clone)]
 pub struct BinaryKv<T>
-    where
-        T: Serialize + Clone + Debug,
+where
+    T: Serialize + Clone + Debug,
 {
     /// The key of the key-value pair
     pub key: String,
@@ -15,8 +15,8 @@ pub struct BinaryKv<T>
 }
 
 impl<T> BinaryKv<T>
-    where
-        T: Serialize + Clone + Debug,
+where
+    T: Serialize + Clone + Debug,
 {
     pub(crate) fn new(key: String, value: T) -> Self {
         BinaryKv { key, value }
@@ -24,12 +24,12 @@ impl<T> BinaryKv<T>
 }
 
 impl<'de, T> Deserialize<'de> for BinaryKv<T>
-    where
-        T: Deserialize<'de> + Serialize + Clone + Debug,
+where
+    T: Deserialize<'de> + Serialize + Clone + Debug,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de>,
+    where
+        D: Deserializer<'de>,
     {
         #[derive(Deserialize)]
         struct ValueHelper<T> {
@@ -131,7 +131,7 @@ impl IntoValue for Value {
     }
 
     fn into_u64(self) -> u64 {
-       match self {
+        match self {
             Value::U64(u64) => u64,
             _ => panic!("Cannot convert Value to u64"),
         }

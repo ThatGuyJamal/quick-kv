@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
+    use crate::types::IntoTypedValue;
+    use crate::{QuickClient, TypedValue};
     use std::collections::HashMap;
     use tempfile::tempdir;
-    use crate::{QuickClient, TypedValue};
-    use crate::types::{IntoTypedValue};
 
     #[test]
     fn test_set() {
@@ -24,18 +24,14 @@ mod tests {
         let mut client = QuickClient::new(Some(tmp_file.clone())).unwrap();
 
         // Set the initial value for the key
-        client
-            .set("hello9", String::from("Hello World!"))
-            .unwrap();
+        client.set("hello9", String::from("Hello World!")).unwrap();
 
         // Verify that the initial value is correct
         let result = client.get::<String>("hello9").unwrap();
         assert_eq!(result, Some(String::from("Hello World!")));
 
         // Set a new value for the same key
-        client
-            .set("hello9", String::from("Updated Value"))
-            .unwrap();
+        client.set("hello9", String::from("Updated Value")).unwrap();
 
         // Verify that the value has been updated
         let result2 = client.get::<String>("hello9").unwrap();
@@ -140,9 +136,15 @@ mod tests {
             v.push(i);
         }
 
-        client.set("vec", TypedValue::<i32>::Vec(v.clone())).unwrap();
+        client
+            .set("vec", TypedValue::<i32>::Vec(v.clone()))
+            .unwrap();
 
-        let result = client.get::<TypedValue<i32>>("vec").unwrap().unwrap().into_vec();
+        let result = client
+            .get::<TypedValue<i32>>("vec")
+            .unwrap()
+            .unwrap()
+            .into_vec();
 
         for i in 0..9 {
             assert_eq!(result[i], v[i]);
@@ -164,9 +166,15 @@ mod tests {
             map.insert(i.to_string(), i);
         }
 
-        client.set("map", TypedValue::<i32>::Hash(map.clone())).unwrap();
+        client
+            .set("map", TypedValue::<i32>::Hash(map.clone()))
+            .unwrap();
 
-        let result = client.get::<TypedValue<i32>>("map").unwrap().unwrap().into_hash();
+        let result = client
+            .get::<TypedValue<i32>>("map")
+            .unwrap()
+            .unwrap()
+            .into_hash();
 
         assert_eq!(result.len(), map.len());
     }

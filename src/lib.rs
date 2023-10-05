@@ -23,9 +23,11 @@
 //!
 //! Coming soon...
 
-mod test;
 mod client;
+mod test;
 mod types;
 
 pub use client::QuickClient;
-pub use types::{Value, BinaryKv, TypedValue, RawIntoValue, RawIntoTypedValue, IntoValue, IntoTypedValue};
+pub use types::{
+    BinaryKv, IntoTypedValue, IntoValue, RawIntoTypedValue, RawIntoValue, TypedValue, Value,
+};

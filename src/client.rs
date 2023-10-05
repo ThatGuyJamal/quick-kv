@@ -1,12 +1,12 @@
+use crate::BinaryKv;
 use bincode::deserialize_from;
 use serde::de::DeserializeOwned;
-use serde::{Serialize};
+use serde::Serialize;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use crate::BinaryKv;
 
 /// The client for the QuickKV database
 #[derive(Debug)]
@@ -42,8 +42,8 @@ impl QuickClient {
     }
 
     pub fn get<T>(&mut self, key: &str) -> io::Result<Option<T>>
-        where
-            T: Serialize + DeserializeOwned + Clone + Debug,
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
     {
         let mut file = match self.file.lock() {
             Ok(file) => file,
@@ -63,9 +63,9 @@ impl QuickClient {
         loop {
             match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
                 Ok(BinaryKv {
-                       key: entry_key,
-                       value,
-                   }) if key == entry_key => {
+                    key: entry_key,
+                    value,
+                }) if key == entry_key => {
                     return Ok(Some(value));
                 }
                 Err(e) => {
@@ -85,8 +85,8 @@ impl QuickClient {
     }
 
     pub fn set<T>(&mut self, key: &str, value: T) -> io::Result<()>
-        where
-            T: Serialize + DeserializeOwned + Clone + Debug,
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
     {
         if self.get::<T>(key)?.is_none() {
             // Key doesn't exist, add a new key-value pair
@@ -123,8 +123,8 @@ impl QuickClient {
     }
 
     pub fn delete<T>(&mut self, key: &str) -> io::Result<()>
-        where
-            T: Serialize + DeserializeOwned + Clone + Debug,
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
     {
         let mut file = match self.file.lock() {
             Ok(file) => file,
@@ -179,8 +179,8 @@ impl QuickClient {
     }
 
     pub fn update<T>(&mut self, key: &str, value: T) -> io::Result<()>
-        where
-            T: Serialize + DeserializeOwned + Clone + Debug,
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
     {
         // Lock the file and use a buffered reader
         let mut file = match self.file.lock() {

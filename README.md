@@ -17,19 +17,35 @@ cargo add quick-kv
 ## Usage
 
 ```rust
-use quick_kv::{QuickClient, Value};
+use std::collections::HashMap;
+use quick_kv::*;
 
 fn main() {
     let mut client = QuickClient::new(None).unwrap();
 
+    let mut map = HashMap::new();
+
+    for i in 0..49 {
+        map.insert(i.to_string(), Value::String(i.to_string()).into_string());
+    }
+
     client
-        .set("hello", Value::String("hello world!".to_string()))
+        .set("test-hash", TypedValue::<String>::Hash(map.clone()))
         .unwrap();
 
-    let result = match client.get::<Value>("hello").unwrap().unwrap() {
-        Value::String(s) => s,
-        _ => panic!("Error getting value"),
-    };
+    let map_results = client
+        .get::<TypedValue<String>>("test-hash")
+        .unwrap()
+        .unwrap()
+        .into_hash();
 
-    assert_eq!(result, String::from("hello world!"));
+    for (key, value) in map_results.iter() {
+        assert_eq!(map.get(key).unwrap(), value);
+    }
+
+    assert!(map_results.len() == map.len());
+
+    println!("All tests passed!")
 }
+
+```
