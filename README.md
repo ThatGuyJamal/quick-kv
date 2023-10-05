@@ -33,4 +33,3 @@ fn main() {
 
     assert_eq!(result, String::from("hello world!"));
 }
-```
