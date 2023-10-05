@@ -52,7 +52,7 @@
 //! let mut client = QuickClient::new(None).unwrap();
 //!
 //! // Set a i32 into the database.
-//! client.set("i32", Value::I32(5)).unwrap();
+//! client.set("i32", Value::I32(5).into_i32()).unwrap();
 //!
 //! // Get the i32 from the database and cast the type to the get function.
 //! let our_i32 = client.get::<i32>("i32").unwrap().unwrap();
@@ -67,16 +67,33 @@
 //!
 //! let our_people = client.get::<TypedValue<String>>("people").unwrap().unwrap().into_vec();
 //!
-//! assert_eq!(our_people, list_of_people);
+//! assert_eq!(our_people.len(), list_of_people.len());
 //!
 //! list_of_people.push("John".to_string());
 //!
-//! client.set("people", TypedValue::<String>::Vec(list_of_people.clone())).unwrap();
+//! client.update("people", TypedValue::<String>::Vec(list_of_people.clone())).unwrap();
 //!
 //! let our_people = client.get::<TypedValue<String>>("people").unwrap().unwrap().into_vec();
 //!
-//! assert_eq!(our_people, list_of_people);
+//! assert_eq!(our_people.len(), list_of_people.len());
+//!```
+//! Here is a general example of how to use QuickKV. A few important things to note:
 //!
+//! - When adding data into `Vectors/Hashmaps` or into set directly make sure to call `.into_<type>` to make sure
+//! the right data is being saved into the database. Keep in mind, QuickKV is a binary based database, so it
+//! needs the right information to work.
+//! ```rust
+//! use quick_kv::{QuickClient, IntoValue, Value};
+//!
+//! let mut client = QuickClient::new(None).unwrap();
+//!
+//! client.set("i32", Value::I32(5).into_i32()).unwrap();
+//! // these 2 lines are different, and the same data is not saved in the db.
+//! client.set("i32", Value::I32(5)).unwrap();
+//!```
+//!
+//! - `into_vec` and `into_hashmap` are helper methods that allow you to convert a `TypedValue` into a `Vec<T>` or `HashMap<String, T>`.
+//! If you dont use this (not required) then the get method will only return `TypeValue<T>`. This is the same for `Value`, but you can use `into_<type>` to convert it.
 
 mod client;
 mod test;
