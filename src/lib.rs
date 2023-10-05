@@ -34,16 +34,16 @@
 //!
 //!  let mut client = QuickClient::new(None).unwrap();
 //!
-//!     client
-//!         .set("hello", Value::String("hello world!".to_string()))
-//!         .unwrap();
+//!  client
+//!     .set("hello", Value::String("hello world!".to_string()))
+//!     .unwrap();
 //!
-//!     let result = match client.get::<Value>("hello").unwrap().unwrap() {
-//!         Value::String(s) => s,
-//!         _ => panic!("Error getting value"),
-//!     };
+//!  let result = match client.get::<Value>("hello").unwrap().unwrap() {
+//!     Value::String(s) => s,
+//!     _ => panic!("Error getting value"),
+//!  };
 //!
-//!     assert_eq!(result, String::from("hello world!"));
+//!  assert_eq!(result, String::from("hello world!"));
 //! ```
 
 use bincode::deserialize_from;
