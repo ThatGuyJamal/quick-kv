@@ -6,7 +6,7 @@ use std::fmt::Debug;
 #[derive(Serialize, PartialEq, Debug, Clone, Eq, Hash, PartialOrd)]
 pub struct BinaryKv<T>
 where
-    T: Serialize + Clone + Debug ,
+    T: Serialize + Clone + Debug,
 {
     /// The key of the key-value pair
     pub key: String,

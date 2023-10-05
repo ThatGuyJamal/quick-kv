@@ -2,17 +2,16 @@
 use rayon::prelude::*;
 
 use crate::types::BinaryKv;
+use bincode::deserialize_from;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::hash::Hash;
-use std::io;
-use std::io::{Seek, SeekFrom};
+use std::io::{self, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use bincode::deserialize_from;
 
 /// The Schema client is a more optimized and faster version of the normal client.
 ///
@@ -24,7 +23,7 @@ use bincode::deserialize_from;
 #[derive(Debug)]
 pub struct QuickSchemaClient<T>
 where
-    T: Serialize + DeserializeOwned + Clone + Debug +  Eq + PartialEq + Hash,
+    T: Serialize + DeserializeOwned + Clone + Debug + Eq + PartialEq + Hash,
 {
     pub file: Arc<Mutex<File>>,
     pub cache: Mutex<HashMap<String, BinaryKv<T>>>,
@@ -32,8 +31,8 @@ where
 }
 
 impl<T> QuickSchemaClient<T>
-    where
-        T: Serialize + DeserializeOwned + Clone + Debug +  Eq + PartialEq + Hash,
+where
+    T: Serialize + DeserializeOwned + Clone + Debug + Eq + PartialEq + Hash,
 {
     pub fn new(path: Option<PathBuf>) -> std::io::Result<Self> {
         let path = match path {
@@ -63,7 +62,7 @@ impl<T> QuickSchemaClient<T>
         })
     }
 
-    pub fn get(&mut self, key: &str) -> std::io::Result<Option<T>>  {
+    pub fn get(&mut self, key: &str) -> std::io::Result<Option<T>> {
         // Check if the key is in the cache first
         let cache = self.cache.lock().unwrap();
         if let Some(entry) = cache.get(key) {
@@ -90,11 +89,14 @@ impl<T> QuickSchemaClient<T>
         loop {
             match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
                 Ok(BinaryKv {
-                       key: entry_key,
-                       value,
-                   }) if key == entry_key => {
+                    key: entry_key,
+                    value,
+                }) if key == entry_key => {
                     // Cache the deserialized entry
-                    self.cache.lock().unwrap().insert(key.to_string(), BinaryKv::new(key.to_string(), value.clone()));
+                    self.cache.lock().unwrap().insert(
+                        key.to_string(),
+                        BinaryKv::new(key.to_string(), value.clone()),
+                    );
 
                     // Update the current position
                     self.position = reader.seek(SeekFrom::Current(0))?;
@@ -133,23 +135,23 @@ impl<T> QuickSchemaClient<T>
         todo!()
     }
 
-    pub fn get_all(&mut self) -> std::io::Result<Vec<T>>  {
+    pub fn get_all(&mut self) -> std::io::Result<Vec<T>> {
         todo!()
     }
 
-    pub  fn get_many(&mut self, keys: Vec<String>) -> std::io::Result<Vec<T>>  {
+    pub fn get_many(&mut self, keys: Vec<String>) -> std::io::Result<Vec<T>> {
         todo!()
     }
 
-    pub  fn set_many(&mut self, values: Vec<BinaryKv<T>>) -> std::io::Result<()>  {
+    pub fn set_many(&mut self, values: Vec<BinaryKv<T>>) -> std::io::Result<()> {
         todo!()
     }
 
-    pub   fn delete_many(&mut self, keys: Vec<String>) -> std::io::Result<()>  {
+    pub fn delete_many(&mut self, keys: Vec<String>) -> std::io::Result<()> {
         todo!()
     }
 
-    pub   fn update_many(&mut self, values: Vec<BinaryKv<T>>) -> std::io::Result<()> {
+    pub fn update_many(&mut self, values: Vec<BinaryKv<T>>) -> std::io::Result<()> {
         todo!()
     }
 }

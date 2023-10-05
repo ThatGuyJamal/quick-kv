@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use std::collections::HashMap;
     use serde::{Deserialize, Serialize};
+    use std::collections::HashMap;
     use tempfile::tempdir;
 
     #[test]
@@ -182,13 +182,13 @@ mod tests {
 
 #[cfg(feature = "full")]
 #[cfg(test)]
-mod feature_tests  {
-    use tempfile::tempdir;
+mod feature_tests {
     use crate::prelude::*;
+    use tempfile::tempdir;
 
     #[test]
     fn test_client_new() {
-    let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
         match QuickSchemaClient::<String>::new(Some(tmp_file)) {
