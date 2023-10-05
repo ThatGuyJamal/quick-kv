@@ -13,7 +13,7 @@ mod tests {
         let mut client = QuickClient::new(Some(tmp_file)).unwrap();
 
         let value = String::from("Hello World!");
-        client.set::<String>("hello", value).unwrap();
+        client.set("hello", value).unwrap();
     }
 
     #[test]
@@ -25,7 +25,7 @@ mod tests {
 
         // Set the initial value for the key
         client
-            .set::<String>("hello9", String::from("Hello World!"))
+            .set("hello9", String::from("Hello World!"))
             .unwrap();
 
         // Verify that the initial value is correct
@@ -34,7 +34,7 @@ mod tests {
 
         // Set a new value for the same key
         client
-            .set::<String>("hello9", String::from("Updated Value"))
+            .set("hello9", String::from("Updated Value"))
             .unwrap();
 
         // Verify that the value has been updated
@@ -50,7 +50,7 @@ mod tests {
         let mut client = QuickClient::new(Some(tmp_file)).unwrap();
 
         let value = String::from("Hello World!");
-        client.set::<String>("hello2", value.clone()).unwrap();
+        client.set("hello2", value.clone()).unwrap();
 
         let result = client.get::<String>("hello2").unwrap();
         assert_eq!(result, Some(value));
@@ -64,7 +64,7 @@ mod tests {
         let mut client = QuickClient::new(Some(tmp_file)).unwrap();
 
         let value = String::from("Hello World!");
-        client.set::<String>("hello3", value).unwrap();
+        client.set("hello3", value).unwrap();
 
         let result = client
             .get::<String>("doesnotexist-124319284791827948179")
@@ -80,8 +80,8 @@ mod tests {
         let mut client = QuickClient::new(Some(tmp_file)).unwrap();
         let value = String::from("Hello World!");
 
-        client.set::<String>("hello5", value.clone()).unwrap();
-        client.set::<String>("hello6", value.clone()).unwrap();
+        client.set("hello5", value.clone()).unwrap();
+        client.set("hello6", value.clone()).unwrap();
 
         let result = client.get::<String>("hello5").unwrap();
         assert_eq!(result, Some(value)); // Clone the value to compare it
@@ -95,7 +95,7 @@ mod tests {
         let mut client = QuickClient::new(Some(tmp_file)).unwrap();
         let value = String::from("Hello World!");
 
-        client.set::<String>("hello7", value.clone()).unwrap();
+        client.set("hello7", value.clone()).unwrap();
         let result = client.get::<String>("hello7").unwrap();
         assert_eq!(result, Some(value.clone()));
 
