@@ -2,6 +2,7 @@
 mod tests {
     use crate::prelude::*;
     use std::collections::HashMap;
+    use serde::{Deserialize, Serialize};
     use tempfile::tempdir;
 
     #[test]
@@ -176,5 +177,25 @@ mod tests {
             .into_hash();
 
         assert_eq!(result.len(), map.len());
+    }
+}
+
+#[cfg(feature = "full")]
+#[cfg(test)]
+mod feature_tests  {
+    use tempfile::tempdir;
+    use crate::prelude::*;
+
+    #[test]
+    fn test_client_new() {
+    let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        match QuickSchemaClient::<String>::new(Some(tmp_file)) {
+            Ok(_) => {}
+            Err(e) => {
+                panic!("Error creating client: {:?}", e);
+            }
+        }
     }
 }

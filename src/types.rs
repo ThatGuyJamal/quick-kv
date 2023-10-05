@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 /// The data structure used to store key-value pairs in the database
-#[derive(Serialize, PartialEq, Debug, Clone)]
+#[derive(Serialize, PartialEq, Debug, Clone, Eq, Hash, PartialOrd)]
 pub struct BinaryKv<T>
 where
-    T: Serialize + Clone + Debug,
+    T: Serialize + Clone + Debug ,
 {
     /// The key of the key-value pair
     pub key: String,

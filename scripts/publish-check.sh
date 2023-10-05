@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Makes sure no db files exist before running all the test.
-if [ -f "../db.qkv" ]; then
-  rm ../db.qkv
+if [ -f "db.qkv" ]; then
+  rm db.qkv
 fi
 
 # Check if the current directory is a Rust crate
@@ -39,6 +39,10 @@ fi
 if ! cargo publish --dry-run --allow-dirty; then
   echo "Error: 'cargo publish' dry run failed. Please fix any issues reported."
   exit 1
+fi
+
+if [ -f "db.qkv" ]; then
+  rm db.qkv
 fi
 
 echo "Everything looks good! You can proceed with 'cargo publish' to publish your crate."

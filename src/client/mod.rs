@@ -6,12 +6,14 @@ use std::io;
 use std::path::PathBuf;
 
 pub mod normal;
+
+#[cfg(feature = "full")]
 pub mod schema;
 
 pub trait Client {
     fn new(path: Option<PathBuf>) -> io::Result<Self>
     where
-        Self: Sized;
+        Self: Sized + Debug;
 
     fn get<T>(&mut self, key: &str) -> io::Result<Option<T>>
     where
