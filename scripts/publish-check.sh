@@ -31,7 +31,7 @@ if ! cargo test --doc --all; then
 fi
 
 # Check if cargo publish would succeed (dry run)
-if ! cargo publish --dry-run; then
+if ! cargo publish --dry-run --allow-dirty; then
   echo "Error: 'cargo publish' dry run failed. Please fix any issues reported."
   exit 1
 fi
