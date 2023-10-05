@@ -140,7 +140,7 @@ mod tests {
             v.push(i);
         }
 
-        client.set("vec", v.clone()).unwrap();
+        client.set("vec", TypedValue::<i32>::Vec(v.clone())).unwrap();
 
         let result = client.get::<TypedValue<i32>>("vec").unwrap().unwrap().into_vec();
 
