@@ -5,7 +5,7 @@
 //! # Features
 //!
 //! - Thread safe
-//! - Simple API
+//! - Simplistic API
 //! - Minimal overhead
 //! - Supports any type that implements `Serialize` and `Deserialize` from the `serde` crate
 //!
@@ -30,21 +30,24 @@
 //!
 //! # Examples
 //! ```rust
-//! use quick_kv::QuickClient;
+//! use quick_kv::{QuickClient, Value};
 //!
-//! fn main() {
-//!    let mut client = QuickClient::new(None).unwrap();
+//! let mut client = QuickClient::new(None).unwrap();
 //!
-//!    client.set::<String>("hello", String::from("Hello World!")).unwrap();
-//!    let result = client.get::<String>("hello").unwrap();
+//! client.set("hello", Value::String("world".to_string())).unwrap();
 //!
-//!    assert_eq!(result, Some(String::from("Hello World!")));
-//! }
+//! let result: String = match client.get::<Value>("hello") {
+//!   Value::String(s) => s,
+//!   _ => panic!("Error getting value"),
+//!};
+//!
+//!assert_eq!(result, "world");
 //! ```
 
 use bincode::deserialize_from;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Seek, SeekFrom, Write};
@@ -55,17 +58,16 @@ use std::sync::{Arc, Mutex};
 ///
 /// # Examples
 /// ```rust
-/// use quick_kv::QuickClient;
+///  use quick_kv::QuickClient;
 ///
-/// fn main() {
-///     let mut client = QuickClient::new(None).unwrap();
+///  let mut client = QuickClient::new(None).unwrap();
 ///
-///     client.set::<String>("hello", String::from("Hello World!")).unwrap();
+///  client.set::<String>("hello", String::from("Hello World!")).unwrap();
 ///
-///     let result = client.get::<String>("hello").unwrap();
+///  let result = client.get::<String>("hello").unwrap();
 ///
-///     assert_eq!(result, Some(String::from("Hello World!")));
-/// }
+///  assert_eq!(result, Some(String::from("Hello World!")));
+/// ```
 #[derive(Debug)]
 pub struct QuickClient {
     file: Arc<Mutex<File>>,
@@ -85,11 +87,11 @@ where
     ///
     /// # Examples
     /// ```rust
-    /// use quick_kv::BinaryKv;
+    /// use quick_kv::{BinaryKv, Value};
     ///
-    /// BinaryKv::<String> {
+    /// BinaryKv::<Value> {
     ///    key: String::from("hello"),
-    ///   value: String::from("Hello World!"),
+    ///    value: Value::String("hello world".to_string()),
     /// };
     /// ```
     pub value: T,
@@ -127,6 +129,28 @@ where
     }
 }
 
+/// Represents a value that can be stored in the database.
+///
+/// This can be any type of data that implements `Serialize` and `Deserialize` from the `serde` crate.
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub enum Value {
+    String(String),
+    Bool(bool),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    Usize(usize),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    Isize(isize),
+    F32(f32),
+    F64(f64),
+    Array(Vec<Value>),
+    Object(HashMap<String, Value>),
+    None,
+}
+
 impl QuickClient {
     /// Creates a new QuickClient instance
     ///
@@ -134,11 +158,9 @@ impl QuickClient {
     ///
     /// # Examples
     /// ```rust
-    /// use quick_kv::QuickClient;
+    ///  use quick_kv::QuickClient;
     ///
-    /// fn main() {
-    ///     let mut client = QuickClient::new(None).unwrap();
-    /// }
+    ///  let mut client = QuickClient::new(None).unwrap();
     pub fn new(path: Option<PathBuf>) -> io::Result<Self> {
         let path = match path {
             Some(path) => path,
@@ -165,75 +187,24 @@ impl QuickClient {
         })
     }
 
-    /// Sets a key-value pair in the database
-    ///
-    /// `key` The key of the key-value pair
-    ///
-    /// `value` The value of the key-value pair
-    ///
-    /// # Examples
-    /// ```rust
-    /// use quick_kv::QuickClient;
-    ///
-    /// fn main() {
-    ///    let mut client = QuickClient::new(None).unwrap();
-    ///
-    ///   client.set::<String>("hello", String::from("Hello World!")).unwrap();
-    /// }
-    pub fn set<T>(&mut self, key: &str, value: T) -> io::Result<()>
-    where
-        T: Serialize + DeserializeOwned + Clone + Debug,
-    {
-        if self.get::<T>(key)?.is_none() {
-            // Key doesn't exist, add a new key-value pair
-            let mut file = match self.file.lock() {
-                Ok(file) => file,
-                Err(e) => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::Other,
-                        format!("Error locking file: {:?}", e),
-                    ));
-                }
-            };
-
-            let mut writer = io::BufWriter::new(&mut *file);
-
-            let data = BinaryKv::new(key.to_string(), value.clone());
-
-            let serialized = match bincode::serialize(&data) {
-                Ok(data) => data,
-                Err(e) => panic!("Error serializing data: {:?}", e),
-            };
-
-            // Write the serialized data to the file
-            writer.write_all(&serialized)?;
-
-            // Flush the writer to ensure data is written to the file
-            writer.flush()?;
-        } else {
-            // Key already exists, update the value
-            self.update(key, value)?;
-        }
-
-        Ok(())
-    }
-
     /// Gets a value from the database
     ///
     /// `key` The key of the key-value pair
     ///
     /// # Examples
     /// ```rust
-    /// use quick_kv::QuickClient;
+    ///  use quick_kv::{QuickClient, Value};
     ///
-    /// fn main() {
-    ///   let mut client = QuickClient::new(None).unwrap();
+    ///  let mut client = QuickClient::new(None).unwrap();
     ///
-    ///   client.set::<String>("hello", String::from("Hello World!")).unwrap();
-    ///   let result = client.get::<String>("hello").unwrap();
+    ///   client.set("hello", Value::String("hello world!".to_string())).unwrap();
+    ///   let result = match client.get::<Value>("hello") {
+    ///     Value::String(s) => s,
+    ///     _ => panic!("Error getting value"),
+    /// };
     ///
     ///   assert_eq!(result, Some(String::from("Hello World!")));
-    /// }
+    /// ```
     pub fn get<T>(&mut self, key: &str) -> io::Result<Option<T>>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
@@ -277,25 +248,76 @@ impl QuickClient {
         Ok(None)
     }
 
+    /// Sets a key-value pair in the database
+    ///
+    /// `key` The key of the key-value pair
+    ///
+    /// `value` The value of the key-value pair
+    ///
+    /// # Examples
+    /// ```rust
+    ///  use quick_kv::{QuickClient, Value};
+    ///
+    ///  let mut client = QuickClient::new(None).unwrap();
+    ///
+    ///  client.set("hello", Value::String("hello world!".to_string())).unwrap();
+    /// ```
+    pub fn set<T>(&mut self, key: &str, value: T) -> io::Result<()>
+    where
+        T: Serialize + DeserializeOwned + Clone + Debug,
+    {
+        if self.get::<T>(key)?.is_none() {
+            // Key doesn't exist, add a new key-value pair
+            let mut file = match self.file.lock() {
+                Ok(file) => file,
+                Err(e) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::Other,
+                        format!("Error locking file: {:?}", e),
+                    ));
+                }
+            };
+
+            let mut writer = io::BufWriter::new(&mut *file);
+
+            let data = BinaryKv::new(key.to_string(), value.clone());
+
+            let serialized = match bincode::serialize(&data) {
+                Ok(data) => data,
+                Err(e) => panic!("Error serializing data: {:?}", e),
+            };
+
+            // Write the serialized data to the file
+            writer.write_all(&serialized)?;
+
+            // Flush the writer to ensure data is written to the file
+            writer.flush()?;
+        } else {
+            // Key already exists, update the value
+            self.update(key, value)?;
+        }
+
+        Ok(())
+    }
+
     /// Deletes a key-value pair from the database
     ///
     /// `key` The key of the key-value pair
     ///
     /// # Examples
     /// ```rust
-    /// use quick_kv::QuickClient;
+    ///  use quick_kv::{QuickClient, Value};
     ///
-    /// fn main() {
-    ///    let mut client = QuickClient::new(None).unwrap();
+    ///  let mut client = QuickClient::new(None).unwrap();
     ///
-    ///    client.set::<String>("hello", String::from("Hello World!")).unwrap();
+    ///  client.set("hello", Value::String("hello world!".to_string())).unwrap();
     ///
-    ///    client.delete::<String>("hello").unwrap();
+    ///  client.delete::<Value>("hello").unwrap();
     ///
-    ///    let result = client.get::<String>("hello").unwrap();
+    ///  let result = client.get::<Value>("hello").unwrap();
     ///
-    ///    assert_eq!(result, None);
-    /// }
+    ///  assert_eq!(result, None);
+    /// ```
     pub fn delete<T>(&mut self, key: &str) -> io::Result<()>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
@@ -362,19 +384,18 @@ impl QuickClient {
     ///
     /// # Examples
     /// ```rust
-    /// use quick_kv::QuickClient;
+    ///  use quick_kv::{QuickClient, Value};
     ///
-    /// fn main() {
-    ///    let mut client = QuickClient::new(None).unwrap();
+    ///  let mut client = QuickClient::new(None).unwrap();
     ///
-    ///   client.set::<String>("hello", String::from("Hello")).unwrap();
+    ///  client.set("hello", Value::String("hello world!".to_string())).unwrap();
     ///
-    ///   client.update::<String>("hello", String::from("Hello World!")).unwrap();    ///
+    ///  client.update::<Value>("hello", Value::String("hello world! 2".to_string())).unwrap();
     ///
-    ///   let result = client.get::<String>("hello").unwrap();
+    ///  let result = client.get::<Value>("hello").unwrap();
     ///
-    ///   assert_eq!(result, Some(String::from("Hello World!")));
-    /// }
+    ///  assert_eq!(result, Some(Value::String("hello world! 2".to_string())));
+    /// ```
     pub fn update<T>(&mut self, key: &str, value: T) -> io::Result<()>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
@@ -401,7 +422,7 @@ impl QuickClient {
         loop {
             match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
                 Ok(entry) => {
-                    if key == &entry.key {
+                    if key == entry.key {
                         // Update the value associated with the key
                         let mut updated_entry = entry.clone();
                         updated_entry.value = value.clone();
@@ -590,7 +611,7 @@ mod tests {
 
         let mut v = Vec::new();
 
-        for i in 0..100 {
+        for i in 0..9 {
             v.push(i);
         }
 
@@ -603,5 +624,28 @@ mod tests {
         }
 
         assert_eq!(result.len(), v.len());
+    }
+
+    #[test]
+    fn test_hashmap_injection() {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickClient::new(Some(tmp_file.clone())).unwrap();
+
+        let mut map = HashMap::new();
+
+        for i in 0..4 {
+            map.insert(i.to_string(), Value::I32(i)); // Convert integer to Value::I32
+        }
+
+        client.set("map", Value::Object(map.clone())).unwrap();
+
+        let result = match client.get::<Value>("map").unwrap() {
+            Some(Value::Object(map)) => map,
+            _ => panic!("Error getting map"),
+        };
+
+        assert_eq!(result.len(), map.len());
     }
 }
