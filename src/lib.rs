@@ -28,4 +28,4 @@ mod client;
 mod types;
 
 pub use client::QuickClient;
-pub use types::{Value, BinaryKv, TypedValue, RawIntoValue, RawIntoTypedValue};
+pub use types::{Value, BinaryKv, TypedValue, RawIntoValue, RawIntoTypedValue, IntoValue, IntoTypedValue};
