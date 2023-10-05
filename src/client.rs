@@ -255,4 +255,49 @@ impl QuickClient {
 
         Ok(())
     }
+
+    pub fn clear(&mut self) -> io::Result<()> {
+        todo!("not tested");
+
+        let file = match self.file.lock() {
+            Ok(file) => file,
+            Err(e) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Error locking file: {:?}", e),
+                ));
+            }
+        };
+
+        let mut writer = io::BufWriter::new(&*file);
+
+        // Truncate the file
+        writer.get_mut().set_len(0)?;
+        writer.seek(SeekFrom::Start(0))?;
+
+        // Flush the writer to ensure data is written to the file
+        writer.flush()?;
+
+        Ok(())
+    }
+
+    pub fn get_all() {
+        todo!()
+    }
+
+    pub fn get_many() {
+        todo!()
+    }
+
+    pub fn set_many() {
+        todo!()
+    }
+
+    pub fn delete_many() {
+        todo!()
+    }
+
+    pub fn update_many() {
+        todo!()
+    }
 }
