@@ -17,15 +17,20 @@ cargo add quick-kv
 ## Usage
 
 ```rust
-use quick_kv::QuickClient;
+use quick_kv::{QuickClient, Value};
 
 fn main() {
     let mut client = QuickClient::new(None).unwrap();
 
-    client.set::<String>("key", "value".to_string());
-    
-    let result = client.get::<String>("key").unwrap();
+    client
+        .set("hello", Value::String("hello world!".to_string()))
+        .unwrap();
 
-    println!("{}", result);
+    let result = match client.get::<Value>("hello").unwrap().unwrap() {
+        Value::String(s) => s,
+        _ => panic!("Error getting value"),
+    };
+
+    assert_eq!(result, String::from("hello world!"));
 }
 ```
