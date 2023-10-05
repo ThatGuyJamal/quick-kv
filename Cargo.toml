@@ -8,7 +8,7 @@ documentation = "https://docs.rs/quick-kv"
 publish = true
 
 authors = ["ThatGuyJamal <thatguyjamalbiz@gmai.com>"]
-exclude = ["examples/*", ".gitignore", ".github/", ".idea/", ".vscode/"]
+exclude = ["examples/*", ".gitignore", ".github/", ".idea/", ".vscode/", "scripts/"]
 readme = "README.md"
 
 categories = ["database", "caching"]
