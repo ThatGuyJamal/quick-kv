@@ -6,6 +6,7 @@ edition = "2021"
 repository = "https://github.com/ThatGuyJamal/quick-kv"
 documentation = "https://docs.rs/quick-kv"
 publish = true
+resolver = "2"
 
 authors = ["ThatGuyJamal <thatguyjamalbiz@gmai.com>"]
 exclude = ["examples/*", ".gitignore", ".github/", ".idea/", ".vscode/", "scripts/"]
@@ -21,11 +22,19 @@ serde = { version = "1.0.188", features = ["derive"] }
 # Deps for the full feature
 rayon = { version = "1.8.0", optional = true }
 simple_logger = { version = "4.2.0", optional = true, features = ["threads", "colored"] }
-log = "0.4.20"
+time = { version = "^0.3.16", features = [], optional = true }
+log = { version = "0.4.20", optional = true }
 
 [dev-dependencies]
 tempfile = "3.8.0"
 
 [features]
 default = []
-full = ["rayon", "simple_logger"]
+full = ["rayon", "simple_logger", "time", "log"]
+
+[[example]]
+name = "basic"
+
+[[example]]
+name = "advanced"
+required-features = ["full"]

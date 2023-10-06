@@ -1,39 +1,19 @@
-# Quick-KV
+use std::path::PathBuf;
 
-A Fast Key Value Database in rust.
-
-## Features
-
-- [x] Binary Based Data-Store
-- [x] Serde Supported Data Types
-- [x] Thread Safe
-
-## Installation
-
-```bash
-cargo add quick-kv --features full
-```
-
-## Documentation
-
-For the most detailed documentation, please see the [docs.rs](https://docs.rs/quick-kv) page.
-
-## Usage
-
-```rust
 use quick_kv::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::PathBuf};
 
-fn main() {
-    let config = Configuration {
+fn main()
+{
+    let config = QuickConfiguration {
         path: Some(PathBuf::from("schema.qkv")),
         logs: true,
         log_level: Some(LevelFilter::Debug),
     };
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-    struct Books {
+    struct Books
+    {
         title: String,
         description: String,
         pages: u32,
@@ -77,6 +57,6 @@ fn main() {
     for i in 0..results.len() {
         println!("Found book: {:?}", results[i].value.title)
     }
-}
 
-```
+    assert_eq!(results.len(), books.len());
+}

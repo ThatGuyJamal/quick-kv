@@ -1,10 +1,3 @@
-use crate::types::BinaryKv;
-use bincode::deserialize_from;
-use log::LevelFilter;
-use rayon::prelude::*;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
-use simple_logger::SimpleLogger;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
@@ -13,15 +6,36 @@ use std::io::{self, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use bincode::deserialize_from;
+use log::LevelFilter;
+use rayon::prelude::*;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+use simple_logger::SimpleLogger;
+use time::macros::format_description;
+
+use crate::types::BinaryKv;
+
 #[derive(Debug, Clone)]
-pub struct Configuration {
+pub struct QuickConfiguration
+{
     pub path: Option<PathBuf>,
     pub logs: bool,
     pub log_level: Option<LevelFilter>,
 }
 
-impl Default for Configuration {
-    fn default() -> Self {
+impl QuickConfiguration
+{
+    pub fn new(path: Option<PathBuf>, logs: bool, log_level: Option<LevelFilter>) -> Self
+    {
+        Self { path, logs, log_level }
+    }
+}
+
+impl Default for QuickConfiguration
+{
+    fn default() -> Self
+    {
         Self {
             path: Some(PathBuf::from("db.qkv")),
             logs: false,
@@ -32,10 +46,40 @@ impl Default for Configuration {
 
 /// The Schema client is a more optimized and faster version of the normal client.
 ///
-/// It allows you to define a schema for your data, which will be used to serialize and deserialize your data.
-/// The benefit is all operations are optimized for your data type, it also makes typings easier to work with.
-/// Use this client when you want to work with data-modules that you have defined. The normal client is good
-/// for storing generic data that could change frequently.
+/// It allows you to define a schema for your data, which will be used to serialize and deserialize
+/// your data. The benefit is all operations are optimized for your data type, it also makes typings
+/// easier to work with. Use this client when you want to work with data-modules that you have
+/// defined. The normal client is good for storing generic data that could change frequently.
+///
+/// # Example
+/// ```rust
+/// use std::path::PathBuf;
+///
+/// use quick_kv::prelude::*;
+/// use serde::{Deserialize, Serialize};
+///
+/// #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
+/// struct User
+/// {
+///     name: String,
+///     age: u8,
+/// }
+///
+/// let config = QuickConfiguration::new(Some(PathBuf::from("db.qkv")), true, None);
+///
+/// let mut client = QuickSchemaClient::<User>::new(Some(config)).unwrap();
+///
+/// let user = User {
+///     name: "John".to_string(),
+///     age: 20,
+/// };
+///
+/// client.set("user", user.clone()).unwrap();
+///
+/// let user_from_db = client.get("user").unwrap();
+///
+/// assert_eq!(user, Some(user_from_db));
+/// ```
 #[cfg(feature = "full")]
 #[derive(Debug)]
 pub struct QuickSchemaClient<T>
@@ -45,25 +89,30 @@ where
     pub file: Arc<Mutex<File>>,
     pub cache: Mutex<HashMap<String, BinaryKv<T>>>,
     pub position: u64,
-    pub config: Configuration,
+    pub config: QuickConfiguration,
 }
 
 impl<T> QuickSchemaClient<T>
 where
     T: Serialize + DeserializeOwned + Clone + Debug + Eq + PartialEq + Hash,
 {
-    pub fn new(config: Option<Configuration>) -> std::io::Result<Self> {
+    pub fn new(config: Option<QuickConfiguration>) -> std::io::Result<Self>
+    {
         let config = match config {
             Some(config) => config,
-            None => Configuration::default(),
+            None => QuickConfiguration::default(),
         };
 
         if config.clone().logs {
-            let log_level = config.clone().log_level.unwrap();
+            let log_level = match config.clone().log_level {
+                Some(log_level) => log_level,
+                None => QuickConfiguration::default().log_level.unwrap(),
+            };
             SimpleLogger::new()
                 .with_colors(true)
                 .with_threads(true)
                 .with_level(log_level)
+                .with_timestamp_format(format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"))
                 .init()
                 .unwrap();
         }
@@ -76,10 +125,7 @@ where
         {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error opening file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error opening file: {:?}", e)));
             }
         };
 
@@ -93,7 +139,8 @@ where
         })
     }
 
-    pub fn get(&mut self, key: &str) -> std::io::Result<Option<T>> {
+    pub fn get(&mut self, key: &str) -> std::io::Result<Option<T>>
+    {
         log::info!("[GET] Searching for key: {}", key);
 
         // Check if the key is in the cache first
@@ -107,10 +154,7 @@ where
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
             }
         };
 
@@ -121,15 +165,12 @@ where
         // Read and deserialize entries until the end of the file is reached
         loop {
             match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
-                Ok(BinaryKv {
-                    key: entry_key,
-                    value,
-                }) if key == entry_key => {
+                Ok(BinaryKv { key: entry_key, value }) if key == entry_key => {
                     // Cache the deserialized entry
-                    self.cache.lock().unwrap().insert(
-                        key.to_string(),
-                        BinaryKv::new(key.to_string(), value.clone()),
-                    );
+                    self.cache
+                        .lock()
+                        .unwrap()
+                        .insert(key.to_string(), BinaryKv::new(key.to_string(), value.clone()));
                     log::debug!("[GET] Caching uncached key: {}", key);
 
                     // Update the current position
@@ -156,7 +197,8 @@ where
         Ok(None)
     }
 
-    pub fn set(&mut self, key: &str, value: T) -> std::io::Result<()> {
+    pub fn set(&mut self, key: &str, value: T) -> std::io::Result<()>
+    {
         log::info!("[SET] Setting key: {}", key);
 
         // First check if the data already exist, if so, update it not set it again.
@@ -169,10 +211,7 @@ where
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
             }
         };
 
@@ -193,17 +232,18 @@ where
         writer.write_all(&serialized)?;
         writer.get_ref().sync_all()?;
 
-        self.cache.lock().unwrap().insert(
-            key.to_string(),
-            BinaryKv::new(key.to_string(), value.clone()),
-        );
+        self.cache
+            .lock()
+            .unwrap()
+            .insert(key.to_string(), BinaryKv::new(key.to_string(), value.clone()));
 
         log::info!("[SET] Key set: {}", key);
 
         Ok(())
     }
 
-    pub fn delete(&mut self, key: &str) -> std::io::Result<()> {
+    pub fn delete(&mut self, key: &str) -> std::io::Result<()>
+    {
         log::info!("[DELETE] Deleting key: {}", key);
 
         // If the key is not in the cache, dont do anything as it doesn't exist on the file.
@@ -214,10 +254,7 @@ where
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
             }
         };
 
@@ -272,7 +309,8 @@ where
         Ok(())
     }
 
-    pub fn update(&mut self, key: &str, value: T) -> std::io::Result<()> {
+    pub fn update(&mut self, key: &str, value: T) -> std::io::Result<()>
+    {
         log::info!("[UPDATE] Updating key: {}", key);
 
         if self.cache.lock().unwrap().get(key).is_none() {
@@ -283,10 +321,7 @@ where
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
             }
         };
 
@@ -323,12 +358,12 @@ where
         }
 
         if !updated {
-            log::warn!("[UPDATE] Key not found: {}. This should not trigger, if it did some cache may be invalid.", key);
+            log::warn!(
+                "[UPDATE] Key not found: {}. This should not trigger, if it did some cache may be invalid.",
+                key
+            );
             // Key not found
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Key not found: {}", key),
-            ));
+            return Err(io::Error::new(io::ErrorKind::Other, format!("Key not found: {}", key)));
         }
 
         // Close the file and open it in write mode
@@ -356,10 +391,10 @@ where
         writer.get_ref().sync_all()?;
 
         // Update the cache
-        self.cache.lock().unwrap().insert(
-            key.to_string(),
-            BinaryKv::new(key.to_string(), value.clone()),
-        );
+        self.cache
+            .lock()
+            .unwrap()
+            .insert(key.to_string(), BinaryKv::new(key.to_string(), value.clone()));
         log::debug!("[UPDATE] Cache updated: {}", key);
 
         log::info!("[UPDATE] Key updated: {}", key);
@@ -367,16 +402,14 @@ where
         Ok(())
     }
 
-    pub fn clear(&mut self) -> std::io::Result<()> {
+    pub fn clear(&mut self) -> std::io::Result<()>
+    {
         log::info!("[CLEAR] Clearing database");
 
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
             }
         };
 
@@ -394,23 +427,19 @@ where
         Ok(())
     }
 
-    pub fn get_all(&mut self) -> std::io::Result<Vec<BinaryKv<T>>> {
+    pub fn get_all(&mut self) -> std::io::Result<Vec<BinaryKv<T>>>
+    {
         log::info!("[GET_ALL] Fetching all data in db cache...");
 
-        let all_results = self
-            .cache
-            .lock()
-            .unwrap()
-            .iter()
-            .map(|(_, entry)| entry.clone())
-            .collect();
+        let all_results = self.cache.lock().unwrap().iter().map(|(_, entry)| entry.clone()).collect();
 
         log::info!("[GET_ALL] Fetched all data in db");
 
         Ok(all_results)
     }
 
-    pub fn get_many(&mut self, keys: Vec<String>) -> std::io::Result<Vec<BinaryKv<T>>> {
+    pub fn get_many(&mut self, keys: Vec<String>) -> std::io::Result<Vec<BinaryKv<T>>>
+    {
         log::info!("[GET_MANY] Fetching many keys from db cache...");
 
         let mut results = Vec::new();
@@ -426,7 +455,8 @@ where
         Ok(results)
     }
 
-    pub fn set_many(&mut self, values: Vec<BinaryKv<T>>) -> std::io::Result<()> {
+    pub fn set_many(&mut self, values: Vec<BinaryKv<T>>) -> std::io::Result<()>
+    {
         log::info!("[SET_MANY] Setting many keys in db...");
 
         // First check if the data already exist, if so, update it not set it again.
@@ -450,10 +480,7 @@ where
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
             }
         };
 
@@ -476,8 +503,6 @@ where
             }
         };
 
-        log::debug!("[SET_MANY] Serialized {} keys", serialized.len());
-
         // Write the serialized data to the file
         writer.write_all(&serialized)?;
         writer.get_ref().sync_all()?;
@@ -485,10 +510,10 @@ where
         log::debug!("[SET_MANY] Wrote {} keys to file", serialized.len());
 
         for entry in values.iter() {
-            self.cache.lock().unwrap().insert(
-                entry.key.clone(),
-                BinaryKv::new(entry.key.clone(), entry.value.clone()),
-            );
+            self.cache
+                .lock()
+                .unwrap()
+                .insert(entry.key.clone(), BinaryKv::new(entry.key.clone(), entry.value.clone()));
         }
 
         log::info!("[SET_MANY] Set {} keys in db", values.len());
@@ -496,7 +521,8 @@ where
         Ok(())
     }
 
-    pub fn delete_many(&mut self, keys: Vec<String>) -> std::io::Result<()> {
+    pub fn delete_many(&mut self, keys: Vec<String>) -> std::io::Result<()>
+    {
         log::info!("[DELETE_MANY] Deleting many keys from db...");
 
         if self.cache.lock().unwrap().is_empty() {
@@ -523,10 +549,7 @@ where
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
             }
         };
 
@@ -582,7 +605,8 @@ where
         Ok(())
     }
 
-    pub fn update_many(&mut self, values: Vec<BinaryKv<T>>) -> std::io::Result<()> {
+    pub fn update_many(&mut self, values: Vec<BinaryKv<T>>) -> std::io::Result<()>
+    {
         log::info!("[UPDATE_MANY] Updating many keys in db...");
 
         let mut to_set = Vec::new();
@@ -594,17 +618,17 @@ where
         }
 
         if !to_set.is_empty() {
-            log::debug!("[UPDATE_MANY] Found {} keys that dont exist, setting them instead of calling update", to_set.len());
+            log::debug!(
+                "[UPDATE_MANY] Found {} keys that dont exist, setting them instead of calling update",
+                to_set.len()
+            );
             return self.set_many(to_set);
         }
 
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
             }
         };
 
@@ -671,10 +695,10 @@ where
         log::debug!("[UPDATE_MANY] Wrote {} keys to file", serialized.len());
 
         for entry in updated_entries.iter() {
-            self.cache.lock().unwrap().insert(
-                entry.key.clone(),
-                BinaryKv::new(entry.key.clone(), entry.value.clone()),
-            );
+            self.cache
+                .lock()
+                .unwrap()
+                .insert(entry.key.clone(), BinaryKv::new(entry.key.clone(), entry.value.clone()));
         }
 
         log::info!("[UPDATE_MANY] Updated {} keys in db", values.len());

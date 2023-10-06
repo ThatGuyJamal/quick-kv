@@ -1,39 +1,35 @@
-use crate::client::Client;
-use crate::types::BinaryKv;
-use bincode::deserialize_from;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use bincode::deserialize_from;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+
+use crate::types::BinaryKv;
+
 /// The client for the QuickKV database
 #[derive(Debug)]
-pub struct QuickClient {
-    file: Arc<Mutex<File>>,
+pub struct QuickClient
+{
+    pub file: Arc<Mutex<File>>,
 }
 
-impl Client for QuickClient {
-    fn new(path: Option<PathBuf>) -> io::Result<Self> {
+impl QuickClient
+{
+    pub fn new(path: Option<PathBuf>) -> io::Result<Self>
+    {
         let path = match path {
             Some(path) => path,
             None => PathBuf::from("db.qkv"),
         };
 
-        let file = match OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(path)
-        {
+        let file = match OpenOptions::new().read(true).write(true).create(true).open(path) {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error opening file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error opening file: {:?}", e)));
             }
         };
 
@@ -42,17 +38,14 @@ impl Client for QuickClient {
         })
     }
 
-    fn get<T>(&mut self, key: &str) -> io::Result<Option<T>>
+    pub fn get<T>(&mut self, key: &str) -> io::Result<Option<T>>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
             }
         };
 
@@ -63,10 +56,7 @@ impl Client for QuickClient {
         // Read and deserialize entries until the end of the file is reached
         loop {
             match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
-                Ok(BinaryKv {
-                    key: entry_key,
-                    value,
-                }) if key == entry_key => {
+                Ok(BinaryKv { key: entry_key, value }) if key == entry_key => {
                     return Ok(Some(value));
                 }
                 Err(e) => {
@@ -85,7 +75,7 @@ impl Client for QuickClient {
         Ok(None)
     }
 
-    fn set<T>(&mut self, key: &str, value: T) -> io::Result<()>
+    pub fn set<T>(&mut self, key: &str, value: T) -> io::Result<()>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
@@ -94,10 +84,7 @@ impl Client for QuickClient {
             let mut file = match self.file.lock() {
                 Ok(file) => file,
                 Err(e) => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::Other,
-                        format!("Error locking file: {:?}", e),
-                    ));
+                    return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
                 }
             };
 
@@ -123,17 +110,14 @@ impl Client for QuickClient {
         Ok(())
     }
 
-    fn delete<T>(&mut self, key: &str) -> io::Result<()>
+    pub fn delete<T>(&mut self, key: &str) -> io::Result<()>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
             }
         };
 
@@ -179,7 +163,7 @@ impl Client for QuickClient {
         Ok(())
     }
 
-    fn update<T>(&mut self, key: &str, value: T) -> io::Result<()>
+    pub fn update<T>(&mut self, key: &str, value: T) -> io::Result<()>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
@@ -187,10 +171,7 @@ impl Client for QuickClient {
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error locking file: {:?}", e),
-                ));
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
             }
         };
         let mut reader = io::BufReader::new(&mut *file);
@@ -228,10 +209,7 @@ impl Client for QuickClient {
 
         if !updated {
             // Key not found
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Key not found: {}", key),
-            ));
+            return Err(io::Error::new(io::ErrorKind::Other, format!("Key not found: {}", key)));
         }
 
         // Close the file and open it in write mode
@@ -254,44 +232,5 @@ impl Client for QuickClient {
         writer.get_ref().sync_all()?;
 
         Ok(())
-    }
-
-    fn clear(&mut self) -> io::Result<()> {
-        todo!()
-    }
-
-    fn get_all<T>(&mut self) -> io::Result<Vec<T>>
-    where
-        T: Serialize + DeserializeOwned + Clone + Debug,
-    {
-        todo!()
-    }
-
-    fn get_many<T>(&mut self, keys: Vec<String>) -> io::Result<Vec<T>>
-    where
-        T: Serialize + DeserializeOwned + Clone + Debug,
-    {
-        todo!()
-    }
-
-    fn set_many<T>(&mut self, values: Vec<BinaryKv<T>>) -> io::Result<()>
-    where
-        T: Serialize + DeserializeOwned + Clone + Debug,
-    {
-        todo!()
-    }
-
-    fn delete_many<T>(&mut self, keys: Vec<String>) -> io::Result<()>
-    where
-        T: Serialize + DeserializeOwned + Clone + Debug,
-    {
-        todo!()
-    }
-
-    fn update_many<T>(&mut self, values: Vec<BinaryKv<T>>) -> io::Result<()>
-    where
-        T: Serialize + DeserializeOwned + Clone + Debug,
-    {
-        todo!()
     }
 }

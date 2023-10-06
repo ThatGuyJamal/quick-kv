@@ -1,11 +1,15 @@
 #[cfg(test)]
-mod tests {
-    use crate::prelude::*;
+mod tests
+{
     use std::collections::HashMap;
+
     use tempfile::tempdir;
 
+    use crate::prelude::*;
+
     #[test]
-    fn test_set() {
+    fn test_set()
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
@@ -16,7 +20,8 @@ mod tests {
     }
 
     #[test]
-    fn test_set_multiple_keys_with_same_name() {
+    fn test_set_multiple_keys_with_same_name()
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
@@ -38,7 +43,8 @@ mod tests {
     }
 
     #[test]
-    fn test_get() {
+    fn test_get()
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
@@ -52,7 +58,8 @@ mod tests {
     }
 
     #[test]
-    fn test_get_not_found() {
+    fn test_get_not_found()
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
@@ -61,14 +68,13 @@ mod tests {
         let value = String::from("Hello World!");
         client.set("hello3", value).unwrap();
 
-        let result = client
-            .get::<String>("doesnotexist-124319284791827948179")
-            .unwrap();
+        let result = client.get::<String>("doesnotexist-124319284791827948179").unwrap();
         assert_eq!(result, None);
     }
 
     #[test]
-    fn test_get_multiple() {
+    fn test_get_multiple()
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
@@ -83,7 +89,8 @@ mod tests {
     }
 
     #[test]
-    fn test_delete() {
+    fn test_delete()
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
@@ -101,29 +108,27 @@ mod tests {
     }
 
     #[test]
-    fn test_update() {
+    fn test_update()
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
         let mut client = QuickClient::new(Some(tmp_file.clone())).unwrap();
 
-        client
-            .set::<String>("hello8", String::from("Hello World!"))
-            .unwrap();
+        client.set::<String>("hello8", String::from("Hello World!")).unwrap();
 
         let result = client.get::<String>("hello8").unwrap();
         assert_eq!(result, Some(String::from("Hello World!")));
 
-        client
-            .update::<String>("hello8", String::from("Hello World! 2"))
-            .unwrap();
+        client.update::<String>("hello8", String::from("Hello World! 2")).unwrap();
 
         let result2 = client.get::<String>("hello8").unwrap();
         assert_eq!(result2, Some(String::from("Hello World! 2")));
     }
 
     #[test]
-    fn test_vector_injection() {
+    fn test_vector_injection()
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
@@ -135,15 +140,9 @@ mod tests {
             v.push(i);
         }
 
-        client
-            .set("vec", TypedValue::<i32>::Vec(v.clone()))
-            .unwrap();
+        client.set("vec", TypedValue::<i32>::Vec(v.clone())).unwrap();
 
-        let result = client
-            .get::<TypedValue<i32>>("vec")
-            .unwrap()
-            .unwrap()
-            .into_vec();
+        let result = client.get::<TypedValue<i32>>("vec").unwrap().unwrap().into_vec();
 
         for i in 0..9 {
             assert_eq!(result[i], v[i]);
@@ -153,7 +152,8 @@ mod tests {
     }
 
     #[test]
-    fn test_hashmap_injection() {
+    fn test_hashmap_injection()
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
@@ -165,15 +165,9 @@ mod tests {
             map.insert(i.to_string(), i);
         }
 
-        client
-            .set("map", TypedValue::<i32>::Hash(map.clone()))
-            .unwrap();
+        client.set("map", TypedValue::<i32>::Hash(map.clone())).unwrap();
 
-        let result = client
-            .get::<TypedValue<i32>>("map")
-            .unwrap()
-            .unwrap()
-            .into_hash();
+        let result = client.get::<TypedValue<i32>>("map").unwrap().unwrap().into_hash();
 
         assert_eq!(result.len(), map.len());
     }
@@ -181,17 +175,19 @@ mod tests {
 
 #[cfg(feature = "full")]
 #[cfg(test)]
-mod feature_tests {
-    use crate::client::schema::Configuration;
-    use crate::prelude::*;
+mod feature_tests
+{
     use tempfile::tempdir;
 
+    use crate::prelude::*;
+
     #[test]
-    fn test_client_new() -> std::io::Result<()> {
+    fn test_client_new() -> std::io::Result<()>
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        match QuickSchemaClient::<String>::new(Some(Configuration {
+        match QuickSchemaClient::<String>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         })) {
@@ -204,11 +200,12 @@ mod feature_tests {
     }
 
     #[test]
-    fn test_get_and_set() -> std::io::Result<()> {
+    fn test_get_and_set() -> std::io::Result<()>
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<String>::new(Some(Configuration {
+        let mut client = QuickSchemaClient::<String>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -223,11 +220,12 @@ mod feature_tests {
     }
 
     #[test]
-    fn test_clear() -> std::io::Result<()> {
+    fn test_clear() -> std::io::Result<()>
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(Configuration {
+        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -247,11 +245,12 @@ mod feature_tests {
     }
 
     #[test]
-    fn test_get_all() -> std::io::Result<()> {
+    fn test_get_all() -> std::io::Result<()>
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(Configuration {
+        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -272,11 +271,12 @@ mod feature_tests {
     }
 
     #[test]
-    fn test_get_many() -> std::io::Result<()> {
+    fn test_get_many() -> std::io::Result<()>
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(Configuration {
+        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -298,43 +298,36 @@ mod feature_tests {
     }
 
     #[test]
-    fn test_set_many() -> std::io::Result<()> {
+    fn test_set_many() -> std::io::Result<()>
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(Configuration {
+        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
 
         // Set multiple values
-        let values = vec![
-            BinaryKv::new("key1".to_string(), 42),
-            BinaryKv::new("key2".to_string(), 77),
-        ];
+        let values = vec![BinaryKv::new("key1".to_string(), 42), BinaryKv::new("key2".to_string(), 77)];
         client.set_many(values)?;
 
         // Check if values are set correctly in the cache
         let cache = client.cache.lock().unwrap();
         assert_eq!(cache.len(), 2);
-        assert_eq!(
-            cache.get("key1"),
-            Some(&BinaryKv::new("key1".to_string(), 42))
-        );
-        assert_eq!(
-            cache.get("key2"),
-            Some(&BinaryKv::new("key2".to_string(), 77))
-        );
+        assert_eq!(cache.get("key1"), Some(&BinaryKv::new("key1".to_string(), 42)));
+        assert_eq!(cache.get("key2"), Some(&BinaryKv::new("key2".to_string(), 77)));
 
         Ok(())
     }
 
     #[test]
-    fn test_delete_many() -> std::io::Result<()> {
+    fn test_delete_many() -> std::io::Result<()>
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(Configuration {
+        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -355,11 +348,12 @@ mod feature_tests {
     }
 
     #[test]
-    fn test_update_many() -> std::io::Result<()> {
+    fn test_update_many() -> std::io::Result<()>
+    {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(Configuration {
+        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -367,23 +361,14 @@ mod feature_tests {
         client.set("key1", 42)?;
         client.set("key2", 77)?;
 
-        let keys_to_update = vec![
-            BinaryKv::new("key1".to_string(), 22),
-            BinaryKv::new("key2".to_string(), 454),
-        ];
+        let keys_to_update = vec![BinaryKv::new("key1".to_string(), 22), BinaryKv::new("key2".to_string(), 454)];
 
         client.update_many(keys_to_update)?;
 
         let cache = client.cache.lock().unwrap();
         assert_eq!(cache.len(), 2);
-        assert_eq!(
-            cache.get("key1"),
-            Some(&BinaryKv::new("key1".to_string(), 22))
-        );
-        assert_eq!(
-            cache.get("key2"),
-            Some(&BinaryKv::new("key2".to_string(), 454))
-        );
+        assert_eq!(cache.get("key1"), Some(&BinaryKv::new("key1".to_string(), 22)));
+        assert_eq!(cache.get("key2"), Some(&BinaryKv::new("key2".to_string(), 454)));
 
         Ok(())
     }
