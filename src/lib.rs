@@ -65,7 +65,7 @@
 //! Examples can be found in the [examples] directory.
 //!
 //! [QuickClientMini]: client/mini/struct.QuickClientMini.html
-//! [QuickClient]: client/default/struct.QuickSClient.html
+//! [QuickClient]: client/default/struct.QuickClient.html
 //! [QuickConfiguration]: struct.QuickConfiguration.html
 //! [examples]: https://github.com/ThatGuyJamal/quick-kv/tree/master/examples
 

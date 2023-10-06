@@ -11,6 +11,31 @@ use serde::Serialize;
 use crate::types::BinaryKv;
 
 /// The Mini Client. Used for simple data storage and retrieval.
+///
+/// # Example
+/// ```rust
+/// use std::collections::HashMap;
+///
+/// use quick_kv::prelude::*;
+///
+/// let mut client = QuickClientMini::new(None).unwrap();
+///
+/// let mut map = HashMap::new();
+///
+/// for i in 0..9 {
+///    map.insert(i.to_string(), i);
+/// }
+///
+/// client.set("test-hash", TypedValue::<i32>::Hash(map.clone())).unwrap();
+///
+/// let map_results = client.get::<TypedValue<i32>>("test-hash").unwrap().unwrap().into_hash();
+///
+/// for (key, value) in map_results.iter() {
+///    println!("{}: {}", key, value)
+/// }
+///
+/// assert_eq!(map, map_results);
+///```
 #[derive(Debug)]
 pub struct QuickClientMini
 {
