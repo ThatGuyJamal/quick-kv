@@ -114,7 +114,7 @@ impl Client for QuickClient {
             writer.write_all(&serialized)?;
 
             // Flush the writer to ensure data is written to the file
-            writer.flush()?;
+            writer.get_ref().sync_all()?;
         } else {
             // Key already exists, update the value
             self.update(key, value)?;
@@ -251,8 +251,7 @@ impl Client for QuickClient {
             writer.write_all(&serialized)?;
         }
 
-        // Flush the writer to ensure data is written to the file
-        writer.flush()?;
+        writer.get_ref().sync_all()?;
 
         Ok(())
     }

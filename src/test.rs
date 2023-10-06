@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use serde::{Deserialize, Serialize};
     use std::collections::HashMap;
     use tempfile::tempdir;
 
@@ -183,19 +182,147 @@ mod tests {
 #[cfg(feature = "full")]
 #[cfg(test)]
 mod feature_tests {
+    use std::fs;
     use crate::prelude::*;
     use tempfile::tempdir;
 
     #[test]
-    fn test_client_new() {
+    fn test_client_new() -> std::io::Result<()> {
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
         match QuickSchemaClient::<String>::new(Some(tmp_file)) {
-            Ok(_) => {}
+            Ok(_) => Ok(()),
             Err(e) => {
-                panic!("Error creating client: {:?}", e);
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to create QuickSchemaClient: {}", e),
+                ))
             }
         }
+    }
+
+    #[test]
+    fn test_get_and_set() -> std::io::Result<()> {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickSchemaClient::<String>::new(Some(tmp_file.clone()))?;
+
+        client.set("hello", String::from("Hello World!"))?;
+
+        let result = client.get("hello")?;
+
+        assert_eq!(result, Some(String::from("Hello World!")));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_clear() -> std::io::Result<()> {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickSchemaClient::<i32>::new(Some(tmp_file.clone())).unwrap();
+
+        // Add some data to the cache
+        client.set("key1", 42)?;
+        client.set("key2", 77)?;
+
+        // Call clear to remove data from cache and file
+        client.clear()?;
+
+        // Check if cache is empty
+        let cache = client.cache.lock().unwrap();
+        assert!(cache.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_all() -> std::io::Result<()> {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickSchemaClient::<i32>::new(Some(tmp_file.clone())).unwrap();
+
+        // Add some data to the cache
+        client.set("key1", 42)?;
+        client.set("key2", 77)?;
+
+        // Get all data from the cache
+        let all_data = client.get_all()?;
+
+        // Check if all data is retrieved correctly
+        assert_eq!(all_data.len(), 2);
+        assert!(all_data.contains(&BinaryKv::new("key1".to_string(), 42)));
+        assert!(all_data.contains(&BinaryKv::new("key2".to_string(), 77)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_many() -> std::io::Result<()> {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickSchemaClient::<i32>::new(Some(tmp_file.clone())).unwrap();
+
+        // Add some data to the cache
+        client.set("key1", 42)?;
+        client.set("key2", 77)?;
+
+        // Get specific keys from the cache
+        let keys_to_get = vec!["key1".to_string(), "key2".to_string()];
+        let values = client.get_many(keys_to_get)?;
+
+        // Check if values are retrieved correctly
+        assert_eq!(values.len(), 2);
+        assert!(values.contains(&42));
+        assert!(values.contains(&77));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_set_many() -> std::io::Result<()> {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickSchemaClient::<i32>::new(Some(tmp_file.clone())).unwrap();
+
+        // Set multiple values
+        let values = vec![BinaryKv::new("key1".to_string(), 42), BinaryKv::new("key2".to_string(), 77)];
+        client.set_many(values)?;
+
+        // Check if values are set correctly in the cache
+        let cache = client.cache.lock().unwrap();
+        assert_eq!(cache.len(), 2);
+        assert_eq!(cache.get("key1"), Some(&BinaryKv::new("key1".to_string(), 42)));
+        assert_eq!(cache.get("key2"), Some(&BinaryKv::new("key2".to_string(), 77)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_delete_many() -> std::io::Result<()> {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickSchemaClient::<i32>::new(Some(tmp_file.clone())).unwrap();
+
+        // Add some data to the cache
+        client.set("key1", 42)?;
+        client.set("key2", 77)?;
+
+        // Delete specific keys from the cache and file
+        let keys_to_delete = vec!["key1".to_string(), "key2".to_string()];
+        client.delete_many(keys_to_delete)?;
+
+        // Check if keys are deleted from the cache
+        let cache = client.cache.lock().unwrap();
+        assert!(cache.is_empty());
+
+        Ok(())
     }
 }
