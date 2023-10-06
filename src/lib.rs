@@ -27,7 +27,8 @@
 //!
 //!  ## QuickClientMini
 //! [QuickClientMini] is the simplest client. It allows you to CRUD data of any type by leveraging per method generics. It is the
-//! recommended client if you have very inconsistent data you want to store in the database.
+//! recommended client if you have very inconsistent data you want to store in the database or don't
+//! need high preformance read times. 
 //!
 //! Pros:
 //! - Can store any type of data
