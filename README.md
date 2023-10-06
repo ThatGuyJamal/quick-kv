@@ -20,6 +20,7 @@ For the most detailed documentation, please see the [docs.rs](https://docs.rs/qu
 
 ## Usage
 
+*The examples below require the `full` feature to be enabled.*
 ```rust
 use quick_kv::prelude::*;
 use serde::{Deserialize, Serialize};
