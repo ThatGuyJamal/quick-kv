@@ -27,7 +27,7 @@
 //!
 //! # Which Client Should I Use?
 //!
-//! QuickKV has two clients, [QuickClientMini] and [QuickClient].
+//! QuickKV has two clients: [QuickClientMini] and [QuickClient].
 //!
 //!  ## QuickClientMini
 //! [QuickClientMini] is the simplest client. It allows you to CRUD data of any type by leveraging per method generics. It is the
