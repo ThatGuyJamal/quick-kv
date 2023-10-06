@@ -14,7 +14,7 @@ use serde::Serialize;
 use simple_logger::SimpleLogger;
 use time::macros::format_description;
 
-use crate::types::BinaryKv;
+use crate::types::binarykv::BinaryKv;
 
 #[derive(Debug, Clone)]
 pub struct QuickConfiguration
@@ -737,6 +737,207 @@ where
         }
 
         log::info!("[UPDATE_MANY] Updated {} keys in db", values.len());
+
+        Ok(())
+    }
+}
+
+#[cfg(feature = "full")]
+#[cfg(test)]
+mod feature_tests
+{
+    use tempfile::tempdir;
+
+    use crate::prelude::*;
+
+    #[test]
+    fn test_client_new() -> std::io::Result<()>
+    {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        match QuickClient::<String>::new(Some(QuickConfiguration {
+            path: Some(tmp_file.clone()),
+            ..Default::default()
+        })) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to create QuickClient: {}", e),
+            )),
+        }
+    }
+
+    #[test]
+    fn test_get_and_set() -> std::io::Result<()>
+    {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickClient::<String>::new(Some(QuickConfiguration {
+            path: Some(tmp_file.clone()),
+            ..Default::default()
+        }))?;
+
+        client.set("hello", String::from("Hello World!"))?;
+
+        let result = client.get("hello")?;
+
+        assert_eq!(result, Some(String::from("Hello World!")));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_clear() -> std::io::Result<()>
+    {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
+            path: Some(tmp_file.clone()),
+            ..Default::default()
+        }))?;
+
+        // Add some data to the cache
+        client.set("key1", 42)?;
+        client.set("key2", 77)?;
+
+        // Call clear to remove data from cache and file
+        client.clear()?;
+
+        // Check if cache is empty
+        let cache = client.cache.lock().unwrap();
+        assert!(cache.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_all() -> std::io::Result<()>
+    {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
+            path: Some(tmp_file.clone()),
+            ..Default::default()
+        }))?;
+
+        // Add some data to the cache
+        client.set("key1", 42)?;
+        client.set("key2", 77)?;
+
+        // Get all data from the cache
+        let all_data = client.get_all()?;
+
+        // Check if all data is retrieved correctly
+        assert_eq!(all_data.len(), 2);
+        assert!(all_data.contains(&BinaryKv::new("key1".to_string(), 42)));
+        assert!(all_data.contains(&BinaryKv::new("key2".to_string(), 77)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_many() -> std::io::Result<()>
+    {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
+            path: Some(tmp_file.clone()),
+            ..Default::default()
+        }))?;
+
+        // Add some data to the cache
+        client.set("key1", 42)?;
+        client.set("key2", 77)?;
+
+        // Get specific keys from the cache
+        let keys_to_get = vec!["key1".to_string(), "key2".to_string()];
+        let values = client.get_many(keys_to_get)?;
+
+        // Check if values are retrieved correctly
+        assert_eq!(values.len(), 2);
+        assert_eq!(values[0], BinaryKv::new("key1".to_string(), 42));
+        assert_eq!(values[1], BinaryKv::new("key2".to_string(), 77));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_set_many() -> std::io::Result<()>
+    {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
+            path: Some(tmp_file.clone()),
+            ..Default::default()
+        }))?;
+
+        // Set multiple values
+        let values = vec![BinaryKv::new("key1".to_string(), 42), BinaryKv::new("key2".to_string(), 77)];
+        client.set_many(values)?;
+
+        // Check if values are set correctly in the cache
+        let cache = client.cache.lock().unwrap();
+        assert_eq!(cache.len(), 2);
+        assert_eq!(cache.get("key1"), Some(&BinaryKv::new("key1".to_string(), 42)));
+        assert_eq!(cache.get("key2"), Some(&BinaryKv::new("key2".to_string(), 77)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_delete_many() -> std::io::Result<()>
+    {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
+            path: Some(tmp_file.clone()),
+            ..Default::default()
+        }))?;
+
+        // Add some data to the cache
+        client.set("key1", 42)?;
+        client.set("key2", 77)?;
+
+        // Delete specific keys from the cache and file
+        let keys_to_delete = vec!["key1".to_string(), "key2".to_string()];
+        client.delete_many(keys_to_delete)?;
+
+        // Check if keys are deleted from the cache
+        let cache = client.cache.lock().unwrap();
+        assert!(cache.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_update_many() -> std::io::Result<()>
+    {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
+            path: Some(tmp_file.clone()),
+            ..Default::default()
+        }))?;
+
+        client.set("key1", 42)?;
+        client.set("key2", 77)?;
+
+        let keys_to_update = vec![BinaryKv::new("key1".to_string(), 22), BinaryKv::new("key2".to_string(), 454)];
+
+        client.update_many(keys_to_update)?;
+
+        let cache = client.cache.lock().unwrap();
+        assert_eq!(cache.len(), 2);
+        assert_eq!(cache.get("key1"), Some(&BinaryKv::new("key1".to_string(), 22)));
+        assert_eq!(cache.get("key2"), Some(&BinaryKv::new("key2".to_string(), 454)));
 
         Ok(())
     }

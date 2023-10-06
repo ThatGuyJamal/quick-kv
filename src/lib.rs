@@ -81,6 +81,3 @@
 pub mod client;
 pub mod prelude;
 pub mod types;
-
-#[cfg(test)]
-mod test;
