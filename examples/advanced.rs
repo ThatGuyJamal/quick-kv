@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 fn main()
 {
     let config = QuickConfiguration {
-        path: Some(PathBuf::from("schema.qkv")),
+        path: Some(PathBuf::from("db.qkv")),
         logs: true,
         log_level: Some(LevelFilter::Debug),
     };
