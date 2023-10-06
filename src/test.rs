@@ -13,7 +13,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClient::new(Some(tmp_file)).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file)).unwrap();
 
         let value = String::from("Hello World!");
         client.set("hello", value).unwrap();
@@ -25,7 +25,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClient::new(Some(tmp_file.clone())).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.clone())).unwrap();
 
         // Set the initial value for the key
         client.set("hello9", String::from("Hello World!")).unwrap();
@@ -48,7 +48,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClient::new(Some(tmp_file)).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file)).unwrap();
 
         let value = String::from("Hello World!");
         client.set("hello2", value.clone()).unwrap();
@@ -63,7 +63,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClient::new(Some(tmp_file)).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file)).unwrap();
 
         let value = String::from("Hello World!");
         client.set("hello3", value).unwrap();
@@ -78,7 +78,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClient::new(Some(tmp_file)).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file)).unwrap();
         let value = String::from("Hello World!");
 
         client.set("hello5", value.clone()).unwrap();
@@ -94,7 +94,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClient::new(Some(tmp_file)).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file)).unwrap();
         let value = String::from("Hello World!");
 
         client.set("hello7", value.clone()).unwrap();
@@ -113,7 +113,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClient::new(Some(tmp_file.clone())).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.clone())).unwrap();
 
         client.set::<String>("hello8", String::from("Hello World!")).unwrap();
 
@@ -132,7 +132,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClient::new(Some(tmp_file.clone())).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.clone())).unwrap();
 
         let mut v = Vec::new();
 
@@ -157,7 +157,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClient::new(Some(tmp_file.clone())).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.clone())).unwrap();
 
         let mut map = HashMap::new();
 
@@ -187,14 +187,14 @@ mod feature_tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        match QuickSchemaClient::<String>::new(Some(QuickConfiguration {
+        match QuickClient::<String>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         })) {
             Ok(_) => Ok(()),
             Err(e) => Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!("Failed to create QuickSchemaClient: {}", e),
+                format!("Failed to create QuickClient: {}", e),
             )),
         }
     }
@@ -205,7 +205,7 @@ mod feature_tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<String>::new(Some(QuickConfiguration {
+        let mut client = QuickClient::<String>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -225,7 +225,7 @@ mod feature_tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -250,7 +250,7 @@ mod feature_tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -276,7 +276,7 @@ mod feature_tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -303,7 +303,7 @@ mod feature_tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -327,7 +327,7 @@ mod feature_tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;
@@ -353,7 +353,7 @@ mod feature_tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickSchemaClient::<i32>::new(Some(QuickConfiguration {
+        let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
             path: Some(tmp_file.clone()),
             ..Default::default()
         }))?;

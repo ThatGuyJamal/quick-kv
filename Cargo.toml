@@ -9,7 +9,7 @@ publish = true
 resolver = "2"
 
 authors = ["ThatGuyJamal <thatguyjamalbiz@gmai.com>"]
-exclude = ["examples/*", ".gitignore", ".github/", ".idea/", ".vscode/", "scripts/"]
+include = ["Cargo.toml", "LICENSE", "README.md", "src/", "examples/"]
 readme = "README.md"
 
 categories = ["database", "caching"]
@@ -34,7 +34,9 @@ full = ["rayon", "simple_logger", "time", "log"]
 
 [[example]]
 name = "basic"
+path = "examples/basic.rs"
 
 [[example]]
 name = "advanced"
+path = "examples/advanced.rs"
 required-features = ["full"]

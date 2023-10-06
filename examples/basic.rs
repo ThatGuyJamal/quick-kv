@@ -5,7 +5,7 @@ use quick_kv::prelude::*;
 fn main()
 {
     // Create a new client with the default options
-    let mut client = QuickClient::new(None).unwrap();
+    let mut client = QuickClientMini::new(None).unwrap();
 
     let mut map = HashMap::new();
 

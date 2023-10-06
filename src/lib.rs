@@ -23,10 +23,10 @@
 //!
 //! # Which Client Should I Use?
 //!
-//! QuickKV has two clients, [QuickClient] and [QuickSchemaClient].
+//! QuickKV has two clients, [QuickClientMini] and [QuickClient].
 //!
-//!  ## QuickClient
-//! [QuickClient] is the simplest client. It allows you to CRUD data of any type by leveraging per method generics. It is the
+//!  ## QuickClientMini
+//! [QuickClientMini] is the simplest client. It allows you to CRUD data of any type by leveraging per method generics. It is the
 //! recommended client if you have very inconsistent data you want to store in the database.
 //!
 //! Pros:
@@ -42,8 +42,8 @@
 //! - Lots of type conversions to have type safety
 //! - No Complex APIs for advanced operations
 //!
-//! ## QuickSchemaClient
-//! [QuickSchemaClient] is a client that is optimized for a specific schema and has multi-threading enabled by default. This client
+//! ## QuickClient
+//! [QuickClient] is a client that is optimized for a specific schema and has multi-threading enabled by default. This client
 //! is built for speed and is recommended if you want to take advanced of cached data and multi-threading.
 //!
 //! Pros:
@@ -64,10 +64,9 @@
 //!
 //! Examples can be found in the [examples] directory.
 //!
-//! [QuickClient]: client/normal/struct.QuickClient.html
-//! [QuickSchemaClient]: client/schema/struct.QuickSchemaClient.html
+//! [QuickClientMini]: client/mini/struct.QuickClientMini.html
+//! [QuickClient]: client/default/struct.QuickSClient.html
 //! [QuickConfiguration]: struct.QuickConfiguration.html
-//! [Value]: enum.Value.html
 //! [examples]: https://github.com/ThatGuyJamal/quick-kv/examples
 
 pub mod client;

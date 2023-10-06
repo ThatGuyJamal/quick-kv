@@ -30,7 +30,7 @@ use serde::{Deserialize, Serialize};
 fn main()
 {
     let config = QuickConfiguration {
-        path: Some(PathBuf::from("db.qkv")),
+        path: Some(PathBuf::from("schema.qkv")),
         logs: true,
         log_level: Some(LevelFilter::Debug),
     };
@@ -43,7 +43,7 @@ fn main()
         pages: u32,
     }
 
-    let mut client = QuickSchemaClient::<Books>::new(Some(config)).unwrap();
+    let mut client = QuickClient::<Books>::new(Some(config)).unwrap();
 
     let books = vec![
         Books {

@@ -44,12 +44,12 @@ impl Default for QuickConfiguration
     }
 }
 
-/// The Schema client is a more optimized and faster version of the normal client.
+/// The default and recommended client to use. It is optimized for a specific schema and has multi-threading enabled by default.
 ///
 /// It allows you to define a schema for your data, which will be used to serialize and deserialize
 /// your data. The benefit is all operations are optimized for your data type, it also makes typings
 /// easier to work with. Use this client when you want to work with data-modules that you have
-/// defined. The normal client is good for storing generic data that could change frequently.
+/// defined. The mini client is good for storing generic data that could change frequently.
 ///
 /// # Example
 /// ```rust
@@ -67,7 +67,7 @@ impl Default for QuickConfiguration
 ///
 /// let config = QuickConfiguration::new(Some(PathBuf::from("db.qkv")), true, None);
 ///
-/// let mut client = QuickSchemaClient::<User>::new(Some(config)).unwrap();
+/// let mut client = QuickClient::<User>::new(Some(config)).unwrap();
 ///
 /// let user = User {
 ///     name: "John".to_string(),
@@ -76,13 +76,13 @@ impl Default for QuickConfiguration
 ///
 /// client.set("user", user.clone()).unwrap();
 ///
-/// let user_from_db = client.get("user").unwrap();
+/// let user_from_db = client.get("user").unwrap().unwrap();
 ///
-/// assert_eq!(user, Some(user_from_db));
+/// assert_eq!(user, user_from_db);
 /// ```
 #[cfg(feature = "full")]
 #[derive(Debug)]
-pub struct QuickSchemaClient<T>
+pub struct QuickClient<T>
 where
     T: Serialize + DeserializeOwned + Clone + Debug + Eq + PartialEq + Hash,
 {
@@ -92,7 +92,7 @@ where
     pub config: QuickConfiguration,
 }
 
-impl<T> QuickSchemaClient<T>
+impl<T> QuickClient<T>
 where
     T: Serialize + DeserializeOwned + Clone + Debug + Eq + PartialEq + Hash,
 {

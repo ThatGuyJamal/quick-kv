@@ -10,14 +10,14 @@ use serde::Serialize;
 
 use crate::types::BinaryKv;
 
-/// The client for the QuickKV database
+/// The Mini Client. Used for simple data storage and retrieval.
 #[derive(Debug)]
-pub struct QuickClient
+pub struct QuickClientMini
 {
     pub file: Arc<Mutex<File>>,
 }
 
-impl QuickClient
+impl QuickClientMini
 {
     pub fn new(path: Option<PathBuf>) -> io::Result<Self>
     {

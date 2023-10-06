@@ -19,7 +19,7 @@ fn main()
         pages: u32,
     }
 
-    let mut client = QuickSchemaClient::<Books>::new(Some(config)).unwrap();
+    let mut client = QuickClient::<Books>::new(Some(config)).unwrap();
 
     let books = vec![
         Books {

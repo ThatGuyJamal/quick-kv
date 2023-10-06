@@ -12,7 +12,7 @@ if ! cargo metadata --no-deps --format-version 1 >/dev/null 2>&1; then
 fi
 
 # Check if cargo fmt reports any formatting issues
-if ! cargo fmt --all -- --check; then
+if ! cargo +nightly fmt --all -- --check; then
   echo "Error: Formatting issues detected. Please run 'cargo fmt' to format your code."
   exit 1
 fi

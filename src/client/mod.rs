@@ -1,4 +1,4 @@
-pub mod normal;
+pub mod mini;
 
 #[cfg(feature = "full")]
-pub mod schema;
+pub mod default;
