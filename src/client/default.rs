@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::hash::Hash;
@@ -7,6 +6,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use bincode::deserialize_from;
+use hashbrown::HashMap;
 use log::LevelFilter;
 use rayon::prelude::*;
 use serde::de::DeserializeOwned;

@@ -7,6 +7,10 @@
 //! - Serde Supported Data Types
 //! - Thread safe
 //!
+//! ## Useful Links
+//
+// [Documentation] | [Crates.io] | [Github]
+//!
 //! # Installation
 //!
 //! ```shell
@@ -28,7 +32,7 @@
 //!  ## QuickClientMini
 //! [QuickClientMini] is the simplest client. It allows you to CRUD data of any type by leveraging per method generics. It is the
 //! recommended client if you have very inconsistent data you want to store in the database or don't
-//! need high preformance read times. 
+//! need high performance read times.
 //!
 //! Pros:
 //! - Can store any type of data
@@ -69,6 +73,10 @@
 //! [QuickClient]: client/default/struct.QuickClient.html
 //! [QuickConfiguration]: struct.QuickConfiguration.html
 //! [examples]: https://github.com/ThatGuyJamal/quick-kv/tree/master/examples
+//!
+//! [Documentation]: https://docs.rs/quick-kv
+//! [Crates.io]: https://crates.io/crates/quick-kv
+//! [Github]: https://github.com/ThatGuyJamal/quick-kv
 
 pub mod client;
 pub mod prelude;

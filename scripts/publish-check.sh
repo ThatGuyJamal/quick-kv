@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# If not formatted, some cargo commands will fail, this is just a safely check
+./scripts/fmt-project.sh
+
 # Makes sure no db files exist before running all the test.
 if [ -f "db.qkv" ]; then
   rm db.qkv
