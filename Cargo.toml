@@ -1,7 +1,7 @@
 [package]
 name = "quick-kv"
 description = "A fast and minimal key-value database."
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 repository = "https://github.com/ThatGuyJamal/quick-kv"
 documentation = "https://docs.rs/quick-kv"

@@ -23,19 +23,25 @@ use crate::types::BinaryKv;
 /// let mut map = HashMap::new();
 ///
 /// for i in 0..9 {
-///    map.insert(i.to_string(), i);
+///     map.insert(i.to_string(), i);
 /// }
 ///
-/// client.set("test-hash", TypedValue::<i32>::Hash(map.clone())).unwrap();
+/// client
+///     .set("test-hash", TypedValue::<i32>::Hash(map.clone()))
+///     .unwrap();
 ///
-/// let map_results = client.get::<TypedValue<i32>>("test-hash").unwrap().unwrap().into_hash();
+/// let map_results = client
+///     .get::<TypedValue<i32>>("test-hash")
+///     .unwrap()
+///     .unwrap()
+///     .into_hash();
 ///
 /// for (key, value) in map_results.iter() {
-///    println!("{}: {}", key, value)
+///     println!("{}: {}", key, value)
 /// }
 ///
 /// assert_eq!(map, map_results);
-///```
+/// ```
 #[derive(Debug)]
 pub struct QuickClientMini
 {
