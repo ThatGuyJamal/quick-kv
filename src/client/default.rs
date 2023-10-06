@@ -251,6 +251,7 @@ where
 
         // Write the serialized data to the file
         writer.write_all(&serialized)?;
+        writer.flush()?;
         writer.get_ref().sync_all()?;
 
         self.cache
@@ -315,6 +316,7 @@ where
         // Truncate the file and write the updated data back
         writer.seek(SeekFrom::Start(0))?;
         writer.write_all(&updated_buffer)?;
+        writer.flush()?;
         writer.get_ref().sync_all()?;
 
         self.cache.lock().unwrap().remove(key);
@@ -405,6 +407,7 @@ where
             writer.write_all(&serialized)?;
         }
 
+        writer.flush()?;
         writer.get_ref().sync_all()?;
 
         // Update the cache
@@ -434,6 +437,7 @@ where
 
         writer.get_mut().set_len(0)?;
         writer.seek(SeekFrom::Start(0))?;
+        writer.flush()?;
         writer.get_ref().sync_all()?;
 
         self.cache.lock().unwrap().clear();
@@ -530,6 +534,7 @@ where
 
         // Write the serialized data to the file
         writer.write_all(&serialized)?;
+        writer.flush()?;
         writer.get_ref().sync_all()?;
 
         log::debug!("[SET_MANY] Wrote {} keys to file", serialized.len());
@@ -619,6 +624,7 @@ where
         // Truncate the file and write the updated data back
         writer.seek(SeekFrom::Start(0))?;
         writer.write_all(&updated_buffer)?;
+        writer.flush()?;
         writer.get_ref().sync_all()?;
 
         for key in valid_keys {
@@ -718,6 +724,7 @@ where
         // Truncate the file and write the updated data back
         writer.seek(SeekFrom::Start(0))?;
         writer.write_all(&serialized)?;
+        writer.flush()?;
         writer.get_ref().sync_all()?;
 
         log::debug!("[UPDATE_MANY] Wrote {} keys to file", serialized.len());

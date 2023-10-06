@@ -132,6 +132,7 @@ impl QuickClientMini
             writer.write_all(&serialized)?;
 
             // Flush the writer to ensure data is written to the file
+            writer.flush()?;
             writer.get_ref().sync_all()?;
         } else {
             // Key already exists, update the value
@@ -186,7 +187,8 @@ impl QuickClientMini
         // Truncate the file and write the updated data back
         writer.get_mut().set_len(0)?;
         writer.seek(SeekFrom::Start(0))?;
-        writer.write_all(&updated_buffer)?;
+        writer.flush()?;
+        writer.get_ref().sync_all()?;
 
         // Flush the writer to ensure data is written to the file
         writer.flush()?;
@@ -252,14 +254,20 @@ impl QuickClientMini
         // Truncate the file and write the updated data back
         writer.get_mut().set_len(0)?;
         writer.seek(SeekFrom::Start(0))?;
+
+        let mut serialized = Vec::new();
+
         for entry in updated_entries.iter() {
-            let serialized = match bincode::serialize(entry) {
-                Ok(data) => data,
+            match bincode::serialize(entry) {
+                Ok(data) => {
+                    serialized.extend_from_slice(&data);
+                }
                 Err(e) => panic!("Error serializing data: {:?}", e),
             };
-            writer.write_all(&serialized)?;
         }
 
+        writer.write_all(&serialized)?;
+        writer.flush()?;
         writer.get_ref().sync_all()?;
 
         Ok(())
