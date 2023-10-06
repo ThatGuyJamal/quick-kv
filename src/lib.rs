@@ -67,7 +67,7 @@
 //! [QuickClientMini]: client/mini/struct.QuickClientMini.html
 //! [QuickClient]: client/default/struct.QuickSClient.html
 //! [QuickConfiguration]: struct.QuickConfiguration.html
-//! [examples]: https://github.com/ThatGuyJamal/quick-kv/examples
+//! [examples]: https://github.com/ThatGuyJamal/quick-kv/tree/master/examples
 
 pub mod client;
 pub mod prelude;
