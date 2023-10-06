@@ -22,19 +22,22 @@ For the most detailed documentation, please see the [docs.rs](https://docs.rs/qu
 
 *The examples below require the `full` feature to be enabled.*
 ```rust
+use std::path::PathBuf;
+
 use quick_kv::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::PathBuf};
 
-fn main() {
-    let config = Configuration {
+fn main()
+{
+    let config = QuickConfiguration {
         path: Some(PathBuf::from("schema.qkv")),
         logs: true,
         log_level: Some(LevelFilter::Debug),
     };
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-    struct Books {
+    struct Books
+    {
         title: String,
         description: String,
         pages: u32,
@@ -78,6 +81,7 @@ fn main() {
     for i in 0..results.len() {
         println!("Found book: {:?}", results[i].value.title)
     }
-}
 
+    assert_eq!(results.len(), books.len());
+}
 ```
