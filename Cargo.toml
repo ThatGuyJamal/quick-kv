@@ -25,7 +25,7 @@ serde = { version = "1.0.188", features = ["derive"] }
 # Deps for the full feature
 rayon = { version = "1.8.0", optional = true }
 simple_logger = { version = "4.2.0", optional = true, features = ["threads", "colored"] }
-time = { version = "^0.3.16", features = [], optional = true }
+time = { version = "^0.3.29", features = [], optional = true }
 log = { version = "0.4.20", optional = true }
 hashbrown = { version = "0.14.1", features = ["serde", "rayon"] ,optional = true }
 
