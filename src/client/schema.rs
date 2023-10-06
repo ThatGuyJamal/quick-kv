@@ -492,6 +492,93 @@ where
     }
 
     pub fn update_many(&mut self, values: Vec<BinaryKv<T>>) -> std::io::Result<()> {
-        
+        let mut to_set = Vec::new();
+
+        for entry in values.iter() {
+            if self.cache.lock().unwrap().get(&entry.key).is_none() {
+                to_set.push(entry.clone());
+            }
+        };
+
+        if !to_set.is_empty() {
+            return self.set_many(to_set);
+        }
+
+        let mut file = match self.file.lock() {
+            Ok(file) => file,
+            Err(e) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Error locking file: {:?}", e),
+                ));
+            }
+        };
+
+        let mut reader = io::BufReader::new(&mut *file);
+
+        reader.seek(SeekFrom::Start(self.position))?;
+
+        let mut updated_entries = Vec::new();
+
+        // Read and process entries
+        loop {
+            match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
+                Ok(entry) => {
+                    if let Some(value) = values.iter().find(|v| v.key == entry.key) {
+                        // Update the value associated with the key
+                        let mut updated_entry = entry.clone();
+                        updated_entry.value = value.value.clone();
+                        updated_entries.push(updated_entry);
+                    } else {
+                        updated_entries.push(entry);
+                    }
+                }
+                Err(e) => {
+                    if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                        if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                            // Reached the end of the serialized data
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Close the file and open it in write mode
+        drop(reader); // Release the reader
+
+        // Reopen the file in write mode for writing
+        let mut writer = io::BufWriter::new(&mut *file);
+
+        let mut serialized = Vec::new();
+
+        for entry in updated_entries.iter() {
+            serialized.push(BinaryKv::new(entry.key.clone(), entry.value.clone()))
+        }
+
+        let serialized = match bincode::serialize(&serialized) {
+            Ok(data) => data,
+            Err(e) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Error serializing data: {:?}", e),
+                ));
+            }
+        };
+
+        // Truncate the file and write the updated data back
+        writer.get_mut().set_len(0)?;
+        writer.seek(SeekFrom::Start(0))?;
+        writer.write_all(&serialized)?;
+        writer.get_ref().sync_all()?;
+
+        for entry in updated_entries.iter() {
+            self.cache.lock().unwrap().insert(
+                entry.key.clone(),
+                BinaryKv::new(entry.key.clone(), entry.value.clone()),
+            );
+        }
+
+        Ok(())
     }
 }

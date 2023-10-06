@@ -182,7 +182,6 @@ mod tests {
 #[cfg(feature = "full")]
 #[cfg(test)]
 mod feature_tests {
-    use std::fs;
     use crate::prelude::*;
     use tempfile::tempdir;
 
@@ -322,6 +321,28 @@ mod feature_tests {
         // Check if keys are deleted from the cache
         let cache = client.cache.lock().unwrap();
         assert!(cache.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_update_many()  -> std::io::Result<()> {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv");
+
+        let mut client = QuickSchemaClient::<i32>::new(Some(tmp_file.clone())).unwrap();
+
+        client.set("key1", 42)?;
+        client.set("key2", 77)?;
+
+        let keys_to_update = vec![BinaryKv::new("key1".to_string(), 22), BinaryKv::new("key2".to_string(), 454)];
+
+        client.update_many(keys_to_update)?;
+
+        let cache = client.cache.lock().unwrap();
+        assert_eq!(cache.len(), 2);
+        assert_eq!(cache.get("key1"), Some(&BinaryKv::new("key1".to_string(), 22)));
+        assert_eq!(cache.get("key2"), Some(&BinaryKv::new("key2".to_string(), 454)));
 
         Ok(())
     }
