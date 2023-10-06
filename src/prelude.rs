@@ -6,3 +6,5 @@ pub use crate::types::{
 
 #[cfg(feature = "full")]
 pub use crate::client::schema::QuickSchemaClient;
+#[cfg(feature = "full")]
+pub use log::LevelFilter;
