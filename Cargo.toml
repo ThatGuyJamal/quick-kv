@@ -45,3 +45,10 @@ required-features = ["full"]
 [[bench]]
 name = "mini-client"
 harness = false
+path = "benches/mini-client.rs"
+
+[[bench]]
+name = "client"
+harness = false
+path = "benches/client.rs"
+required-features = ["full"]

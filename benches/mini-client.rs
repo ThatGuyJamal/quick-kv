@@ -1,18 +1,42 @@
+use std::collections::HashMap;
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use quick_kv::prelude::*;
 
-fn fibonacci(n: u64) -> u64
+fn client_mini(c: &mut Criterion)
 {
-    match n {
-        0 => 1,
-        1 => 1,
-        n => fibonacci(n - 1) + fibonacci(n - 2),
-    }
+    c.bench_function("client_mini", |b| {
+        b.iter(|| {
+            let mut client = QuickClientMini::new(None).unwrap();
+
+            let mut map = HashMap::new();
+
+            for i in 0..9 {
+                map.insert(i.to_string(), i);
+            }
+
+            client.set("test-hash", TypedValue::<i32>::Hash(map.clone())).unwrap();
+
+            let map_results = client.get::<TypedValue<i32>>("test-hash").unwrap().unwrap().into_hash();
+
+            black_box(map_results);
+
+            client.delete::<i32>("test-hash").unwrap();
+
+            client.set("hello", Value::String("world".to_string()).into_string()).unwrap();
+
+            black_box(client.get::<String>("hello").unwrap());
+
+            client
+                .update("hello", Value::String("world2".to_string()).into_string())
+                .unwrap();
+
+            black_box(client.get::<String>("hello").unwrap());
+
+            client.delete::<String>("hello").unwrap();
+        })
+    });
 }
 
-fn criterion_benchmark(c: &mut Criterion)
-{
-    c.bench_function("fib 20", |b| b.iter(|| fibonacci(black_box(20))));
-}
-
-criterion_group!(benches, criterion_benchmark);
+criterion_group!(benches, client_mini);
 criterion_main!(benches);
