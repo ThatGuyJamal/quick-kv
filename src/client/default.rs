@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::hash::Hash;
-use std::io::{self, Seek, SeekFrom, Write};
+use std::io::{self, BufRead, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -81,20 +81,19 @@ impl Default for QuickConfiguration
 /// assert_eq!(user, user_from_db);
 /// ```
 #[cfg(feature = "full")]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct QuickClient<T>
 where
-    T: Serialize + DeserializeOwned + Clone + Debug + Eq + PartialEq + Hash,
+    T: Serialize + DeserializeOwned + Clone + Debug + Eq + PartialEq + Hash + Send + Sync,
 {
     pub file: Arc<Mutex<File>>,
-    pub cache: Mutex<HashMap<String, BinaryKv<T>>>,
-    pub position: u64,
+    pub cache: Arc<Mutex<HashMap<String, BinaryKv<T>>>>,
     pub config: QuickConfiguration,
 }
 
 impl<T> QuickClient<T>
 where
-    T: Serialize + DeserializeOwned + Clone + Debug + Eq + PartialEq + Hash,
+    T: Serialize + DeserializeOwned + Clone + Debug + Eq + PartialEq + Hash + Send + Sync,
 {
     pub fn new(config: Option<QuickConfiguration>) -> std::io::Result<Self>
     {
@@ -133,21 +132,24 @@ where
 
         Ok(Self {
             file: Arc::new(Mutex::new(file)),
-            cache: Mutex::new(HashMap::new()),
-            position: 0,
+            cache: Arc::new(Mutex::new(HashMap::new())),
             config,
         })
     }
 
     pub fn get(&mut self, key: &str) -> std::io::Result<Option<T>>
+    where
+        T: Clone,
     {
         log::info!("[GET] Searching for key: {}", key);
 
         // Check if the key is in the cache first
-        let cache = self.cache.lock().unwrap();
-        if let Some(entry) = cache.get(key) {
-            log::debug!("[GET] Found cached key: {}", key);
-            return Ok(Some(entry.value.clone()));
+        {
+            let cache = self.cache.lock().unwrap();
+            if let Some(entry) = cache.get(key) {
+                log::debug!("[GET] Found cached key: {}", key);
+                return Ok(Some(entry.value.clone()));
+            }
         }
 
         // If not in the cache, lock the file for reading
@@ -160,41 +162,58 @@ where
 
         let mut reader = io::BufReader::new(&mut *file);
 
-        reader.seek(SeekFrom::Start(self.position))?;
+        // Set the position if the reader
+        reader.seek(SeekFrom::Start(0))?;
 
-        // Read and deserialize entries until the end of the file is reached
-        loop {
-            match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
-                Ok(BinaryKv { key: entry_key, value }) if key == entry_key => {
-                    // Cache the deserialized entry
-                    self.cache
-                        .lock()
-                        .unwrap()
-                        .insert(key.to_string(), BinaryKv::new(key.to_string(), value.clone()));
-                    log::debug!("[GET] Caching uncached key: {}", key);
+        let key_clone = key.to_string();
 
-                    // Update the current position
-                    self.position = reader.seek(SeekFrom::Current(0))?;
+        // Read and deserialize entries in parallel until the end of the file is reached
+        let result = reader
+            .lines()
+            .par_bridge()
+            .filter_map(|line| {
+                if let Ok(line) = line {
+                    let mut line_reader = io::Cursor::new(line);
+                    match deserialize_from::<_, BinaryKv<T>>(&mut line_reader) {
+                        Ok(BinaryKv { key: entry_key, value }) if key == entry_key => {
+                            // Cache the deserialized entry
+                            self.cache
+                                .lock()
+                                .unwrap()
+                                .insert(key_clone.clone(), BinaryKv::new(key_clone.clone(), value.clone()));
+                            log::debug!("[GET] Caching uncached key: {}", key_clone);
 
-                    log::debug!("[GET] Found key: {}", key);
-                    return Ok(Some(value));
-                }
-                Err(e) => {
-                    if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
-                        if io_err.kind() == io::ErrorKind::UnexpectedEof {
-                            // Reached the end of the serialized data
-                            break;
+                            log::debug!("[GET] Found key: {}", key_clone);
+                            Some(value)
                         }
+                        Err(e) => {
+                            if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                                if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                                    // Reached the end of the serialized data
+                                    None
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
                     }
+                } else {
+                    None
                 }
-                _ => {}
-            }
+            })
+            .collect::<Vec<T>>();
+
+        if result.is_empty() {
+            log::debug!("[GET] Key not found: {}", key);
+            return Ok(None);
         }
 
-        log::info!("[GET] Key not found: {}", key);
+        log::info!("[GET] Key found: {}", key);
 
-        // Key not found
-        Ok(None)
+        Ok(Some(result[0].clone()))
     }
 
     pub fn set(&mut self, key: &str, value: T) -> std::io::Result<()>
@@ -203,41 +222,33 @@ where
 
         // First check if the data already exist, if so, update it not set it again.
         // This will stop memory alloc errors.
-        if self.cache.lock().unwrap().get(key).is_some() {
-            log::debug!("[SET] Key already exists, updating {} instead", key);
-            return self.update(key, value);
+        {
+            if self.cache.lock().unwrap().get(key).is_some() {
+                log::debug!("[SET] Key already exists, updating {} instead", key);
+                return self.update(key, value);
+            }
         }
 
-        let mut file = match self.file.lock() {
-            Ok(file) => file,
-            Err(e) => {
-                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
-            }
-        };
-
-        let mut writer = io::BufWriter::new(&mut *file);
-
         let data = BinaryKv::new(key.to_string(), value.clone());
-        let serialized = match bincode::serialize(&data) {
-            Ok(data) => data,
-            Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error serializing data: {:?}", e),
-                ));
-            }
-        };
+        // Serialize the data in parallel
+        rayon::scope(|s| {
+            let data = &data; // Immutable reference to data
 
-        // Write the serialized data to the file
-        writer.write_all(&serialized)?;
-        writer.get_ref().sync_all()?;
+            s.spawn(move |_| {
+                let mut file = self.file.lock().unwrap();
+                let mut writer = io::BufWriter::new(&mut *file);
+                let serialized = bincode::serialize(data).expect("Error serializing data");
+                writer.write_all(&serialized).expect("Error writing data to file");
+                writer.get_ref().sync_all().expect("Error syncing file");
 
-        self.cache
-            .lock()
-            .unwrap()
-            .insert(key.to_string(), BinaryKv::new(key.to_string(), value.clone()));
+                self.cache
+                    .lock()
+                    .unwrap()
+                    .insert(key.to_string(), BinaryKv::new(key.to_string(), value.clone()));
 
-        log::info!("[SET] Key set: {}", key);
+                log::info!("[SET] Key set: {}", key);
+            })
+        });
 
         Ok(())
     }
@@ -247,64 +258,56 @@ where
         log::info!("[DELETE] Deleting key: {}", key);
 
         // If the key is not in the cache, dont do anything as it doesn't exist on the file.
-        if self.cache.lock().unwrap().remove(key).is_none() {
-            return Ok(());
+        {
+            if self.cache.lock().unwrap().remove(key).is_none() {
+                return Ok(());
+            }
         }
 
-        let mut file = match self.file.lock() {
-            Ok(file) => file,
-            Err(e) => {
-                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
-            }
-        };
+        rayon::scope(|s| {
+            s.spawn(move |_| {
+                let mut file = self.file.lock().unwrap();
+                let mut reader = io::BufReader::new(&mut *file);
 
-        let mut reader = io::BufReader::new(&mut *file);
+                // Create a temporary buffer to store the updated data
+                let mut updated_buffer = Vec::new();
 
-        // Create a temporary buffer to store the updated data
-        let mut updated_buffer = Vec::new();
-
-        // Read and process entries
-        loop {
-            let current_position = reader.seek(SeekFrom::Current(0))?;
-
-            match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
-                Ok(BinaryKv { key: entry_key, .. }) if key != entry_key => {
-                    // Keep entries that don't match the key
-                    updated_buffer.extend_from_slice(reader.buffer());
-
-                    // Update the current position
-                    self.position = reader.seek(SeekFrom::Start(current_position))?;
-                }
-                Ok(_) => {
-                    // Skip entries that match the key
-                    self.position = reader.seek(SeekFrom::Start(current_position))?;
-                }
-                Err(e) => {
-                    if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
-                        if io_err.kind() == io::ErrorKind::UnexpectedEof {
-                            // Reached the end of the serialized data
-                            break;
+                // Read and process entries
+                loop {
+                    match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
+                        Ok(BinaryKv { key: entry_key, .. }) if key != entry_key => {
+                            // Keep entries that don't match the key
+                            updated_buffer.extend_from_slice(reader.buffer());
+                        }
+                        Ok(_) => {}
+                        Err(e) => {
+                            if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                                if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                                    // Reached the end of the serialized data
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        // Close the file and open it in write mode for writing
-        drop(reader); // Release the reader
+                // Close the file and open it in write mode for writing
+                drop(reader); // Release the reader
 
-        let mut writer = io::BufWriter::new(&mut *file);
+                let mut writer = io::BufWriter::new(&mut *file);
 
-        // Truncate the file and write the updated data back
-        writer.get_mut().set_len(0)?;
-        writer.seek(SeekFrom::Start(0))?;
-        writer.write_all(&updated_buffer)?;
-        writer.get_ref().sync_all()?;
+                // Truncate the file and write the updated data back
+                writer.get_mut().set_len(0).expect("Error truncating file");
+                writer.seek(SeekFrom::Start(0)).expect("Error seeking file");
+                writer.write_all(&updated_buffer).expect("Error writing data to file");
+                writer.get_ref().sync_all().expect("Error syncing file");
 
-        self.cache.lock().unwrap().remove(key);
-        log::debug!("[DELETE] Cache deleted: {}", key);
+                self.cache.lock().unwrap().remove(key);
+                log::debug!("[DELETE] Cache deleted: {}", key);
 
-        log::info!("[DELETE] Key deleted: {}", key);
+                log::info!("[DELETE] Key deleted: {}", key);
+            })
+        });
 
         Ok(())
     }
@@ -313,91 +316,84 @@ where
     {
         log::info!("[UPDATE] Updating key: {}", key);
 
-        if self.cache.lock().unwrap().get(key).is_none() {
-            log::debug!("[UPDATE] Key not found, attempting to set {} instead", key);
-            return self.set(key, value);
-        };
+        {
+            if self.cache.lock().unwrap().get(key).is_none() {
+                log::debug!("[UPDATE] Key not found, attempting to set {} instead", key);
+                return self.set(key, value);
+            };
+        }
 
-        let mut file = match self.file.lock() {
-            Ok(file) => file,
-            Err(e) => {
-                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
-            }
-        };
+        let self_clone = self.clone();
 
-        let mut reader = io::BufReader::new(&mut *file);
+        rayon::scope(|s| {
+            s.spawn(move |_| {
+                let mut file = self_clone.file.lock().unwrap();
+                let mut reader = io::BufReader::new(&mut *file);
 
-        reader.seek(SeekFrom::Start(self.position))?;
+                reader.seek(SeekFrom::Start(0)).expect("Error seeking file");
 
-        let mut updated_entries = Vec::new();
-        let mut updated = false;
+                let mut updated_entries = Vec::new();
+                let mut updated = false;
 
-        // Read and process entries
-        loop {
-            match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
-                Ok(entry) => {
-                    if key == entry.key {
-                        // Update the value associated with the key
-                        let mut updated_entry = entry.clone();
-                        updated_entry.value = value.clone();
-                        updated_entries.push(updated_entry);
-                        updated = true;
-                    } else {
-                        updated_entries.push(entry);
-                    }
-                }
-                Err(e) => {
-                    if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
-                        if io_err.kind() == io::ErrorKind::UnexpectedEof {
-                            // Reached the end of the serialized data
-                            break;
+                loop {
+                    match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
+                        Ok(entry) => {
+                            if key == entry.key {
+                                // Update the value associated with the key
+                                let mut updated_entry = entry.clone();
+                                updated_entry.value = value.clone();
+                                updated_entries.push(updated_entry);
+                                updated = true;
+                            } else {
+                                updated_entries.push(entry);
+                            }
+                        }
+                        Err(e) => {
+                            if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                                if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                                    // Reached the end of the serialized data
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        if !updated {
-            log::warn!(
-                "[UPDATE] Key not found: {}. This should not trigger, if it did some cache may be invalid.",
-                key
-            );
-            // Key not found
-            return Err(io::Error::new(io::ErrorKind::Other, format!("Key not found: {}", key)));
-        }
+                if updated {
+                    // Close the file and open it in write mode
+                    drop(reader); // Release the reader
 
-        // Close the file and open it in write mode
-        drop(reader); // Release the reader
+                    // Reopen the file in write mode for writing
+                    let mut writer = io::BufWriter::new(&mut *file);
 
-        // Reopen the file in write mode for writing
-        let mut writer = io::BufWriter::new(&mut *file);
+                    // Truncate the file and write the updated data back
+                    writer.get_mut().set_len(0).expect("Error truncating file");
+                    writer.seek(SeekFrom::Start(0)).expect("Error seeking file");
 
-        // Truncate the file and write the updated data back
-        writer.get_mut().set_len(0)?;
-        writer.seek(SeekFrom::Start(0))?;
-        for entry in updated_entries.iter() {
-            let serialized = match bincode::serialize(entry) {
-                Ok(data) => data,
-                Err(e) => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::Other,
-                        format!("Error serializing data: {:?}", e),
-                    ));
+                    for entry in updated_entries.iter() {
+                        let serialized = bincode::serialize(entry).expect("Error serializing data");
+                        writer.write_all(&serialized).expect("Error writing data to file");
+                    }
+
+                    writer.get_ref().sync_all().expect("Error syncing file");
+
+                    self_clone
+                        .cache
+                        .lock()
+                        .unwrap()
+                        .insert(key.to_string(), BinaryKv::new(key.to_string(), value.clone()));
+
+                    log::debug!("[UPDATE] Cache updated: {}", key);
+
+                    log::info!("[UPDATE] Key updated: {}", key);
+                } else {
+                    log::warn!(
+                        "[UPDATE] Key not found: {}. This should not trigger, if it did some cache may be invalid.",
+                        key
+                    );
                 }
-            };
-            writer.write_all(&serialized)?;
-        }
-
-        writer.get_ref().sync_all()?;
-
-        // Update the cache
-        self.cache
-            .lock()
-            .unwrap()
-            .insert(key.to_string(), BinaryKv::new(key.to_string(), value.clone()));
-        log::debug!("[UPDATE] Cache updated: {}", key);
-
-        log::info!("[UPDATE] Key updated: {}", key);
+            })
+        });
 
         Ok(())
     }
@@ -431,7 +427,12 @@ where
     {
         log::info!("[GET_ALL] Fetching all data in db cache...");
 
-        let all_results = self.cache.lock().unwrap().iter().map(|(_, entry)| entry.clone()).collect();
+        let cache = &self.cache.lock().unwrap();
+
+        let all_results: Vec<BinaryKv<T>> = cache
+            .par_iter() // Parallelize the iteration over key-value pairs
+            .map(|(_, entry)| entry.clone()) // Clone each entry in parallel
+            .collect();
 
         log::info!("[GET_ALL] Fetched all data in db");
 
@@ -442,13 +443,12 @@ where
     {
         log::info!("[GET_MANY] Fetching many keys from db cache...");
 
-        let mut results = Vec::new();
+        let cache_guard = self.cache.lock().unwrap();
 
-        for key in keys {
-            if let Some(entry) = self.cache.lock().unwrap().get(&key) {
-                results.push(entry.clone());
-            }
-        }
+        let results: Vec<BinaryKv<T>> = keys
+            .par_iter() // Parallelize the iteration over keys
+            .filter_map(|key| cache_guard.get(key).cloned()) // Filter and clone entries in parallel
+            .collect();
 
         log::info!("[GET_MANY] Fetched {} keys from db", results.len());
 
@@ -463,9 +463,13 @@ where
         // This will stop memory alloc errors.
         let mut to_update = Vec::new();
 
-        for entry in values.iter() {
-            if self.cache.lock().unwrap().get(&entry.key).is_some() {
-                to_update.push(entry.clone());
+        {
+            let cache_guard = self.cache.lock().unwrap();
+
+            for entry in values.iter() {
+                if cache_guard.get(&entry.key).is_some() {
+                    to_update.push(entry.clone());
+                }
             }
         }
 
@@ -477,46 +481,74 @@ where
             self.update_many(to_update)?;
         }
 
-        let mut file = match self.file.lock() {
-            Ok(file) => file,
-            Err(e) => {
-                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
-            }
-        };
+        rayon::scope(|s| {
+            s.spawn(move |_| {
+                let mut file = self.file.lock().unwrap();
 
-        let mut writer = io::BufWriter::new(&mut *file);
-        let mut serialized = Vec::new();
+                let mut reader = io::BufReader::new(&mut *file);
+                reader.seek(SeekFrom::Start(0)).expect("Error seeking file");
 
-        for entry in values.iter() {
-            serialized.push(BinaryKv::new(entry.key.clone(), entry.value.clone()))
-        }
+                let mut updated_entries = Vec::new();
 
-        log::debug!("[SET_MANY] Serialized {} keys", serialized.len());
+                // Read and process entries
+                loop {
+                    match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
+                        Ok(entry) => {
+                            if let Some(value) = values.iter().find(|v| v.key == entry.key) {
+                                // Update the value associated with the key
+                                let mut updated_entry = entry.clone();
+                                updated_entry.value = value.value.clone();
+                                updated_entries.push(updated_entry);
+                            } else {
+                                updated_entries.push(entry);
+                            }
+                        }
+                        Err(e) => {
+                            if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                                if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                                    // Reached the end of the serialized data
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
 
-        let serialized = match bincode::serialize(&serialized) {
-            Ok(data) => data,
-            Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error serializing data: {:?}", e),
-                ));
-            }
-        };
+                // Close the file and open it in write mode
+                drop(reader); // Release the reader
 
-        // Write the serialized data to the file
-        writer.write_all(&serialized)?;
-        writer.get_ref().sync_all()?;
+                // Reopen the file in write mode for writing
+                let mut writer = io::BufWriter::new(&mut *file);
 
-        log::debug!("[SET_MANY] Wrote {} keys to file", serialized.len());
+                let mut serialized = Vec::new();
 
-        for entry in values.iter() {
-            self.cache
-                .lock()
-                .unwrap()
-                .insert(entry.key.clone(), BinaryKv::new(entry.key.clone(), entry.value.clone()));
-        }
+                for entry in updated_entries.iter() {
+                    serialized.push(BinaryKv::new(entry.key.clone(), entry.value.clone()))
+                }
 
-        log::info!("[SET_MANY] Set {} keys in db", values.len());
+                let serialized = bincode::serialize(&serialized).expect("Error serializing data");
+
+                log::debug!("[SET_MANY] Serialized {} keys", serialized.len());
+
+                // Truncate the file and write the updated data back
+                writer.get_mut().set_len(0).expect("Error truncating file");
+                writer.seek(SeekFrom::Start(0)).expect("Error seeking file");
+                writer.write_all(&serialized).expect("Error writing data to file");
+                writer.get_ref().sync_all().expect("Error syncing file");
+
+                log::debug!("[SET_MANY] Wrote {} keys to file", serialized.len());
+
+                {
+                    let mut cache_guard = self.cache.lock().unwrap();
+
+                    for entry in values.iter() {
+                        cache_guard.insert(entry.key.clone(), BinaryKv::new(entry.key.clone(), entry.value.clone()));
+                    }
+                }
+
+                log::info!("[SET_MANY] Set {} keys in db", values.len());
+            })
+        });
 
         Ok(())
     }
@@ -525,16 +557,22 @@ where
     {
         log::info!("[DELETE_MANY] Deleting many keys from db...");
 
-        if self.cache.lock().unwrap().is_empty() {
-            log::debug!("[DELETE_MANY] Cache is empty, nothing to delete");
-            return Ok(());
+        {
+            if self.cache.lock().unwrap().is_empty() {
+                log::debug!("[DELETE_MANY] Cache is empty, nothing to delete");
+                return Ok(());
+            }
         }
 
         // First we check if any of the keys passed exist, before we search the file for them.
         let mut valid_keys = Vec::new();
-        for key in keys {
-            if self.cache.lock().unwrap().get(&key).is_some() {
-                valid_keys.push(key)
+        {
+            let cache_guard = self.cache.lock().unwrap();
+
+            for key in keys {
+                if cache_guard.get(&key).is_some() {
+                    valid_keys.push(key);
+                }
             }
         }
 
@@ -546,61 +584,55 @@ where
             return Ok(());
         }
 
-        let mut file = match self.file.lock() {
-            Ok(file) => file,
-            Err(e) => {
-                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
-            }
-        };
+        rayon::scope(|s| {
+            s.spawn(move |_| {
+                let mut file = self.file.lock().unwrap();
+                let mut reader = io::BufReader::new(&mut *file);
 
-        let mut reader = io::BufReader::new(&mut *file);
+                // Create a temporary buffer to store the updated data
+                let mut updated_buffer = Vec::new();
 
-        // Create a temporary buffer to store the updated data
-        let mut updated_buffer = Vec::new();
-
-        // Read and process entries
-        loop {
-            let current_position = reader.seek(SeekFrom::Current(0))?;
-
-            match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
-                Ok(BinaryKv { key: entry_key, .. }) if valid_keys.contains(&entry_key) => {
-                    // Keep entries that don't match the key
-                    updated_buffer.extend_from_slice(reader.buffer());
-
-                    // Update the current position
-                    self.position = reader.seek(SeekFrom::Start(current_position))?;
-                }
-                Ok(_) => {
-                    // Skip entries that match the key
-                    self.position = reader.seek(SeekFrom::Start(current_position))?;
-                }
-                Err(e) => {
-                    if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
-                        if io_err.kind() == io::ErrorKind::UnexpectedEof {
-                            // Reached the end of the serialized data
-                            break;
+                // Read and process entries
+                loop {
+                    match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
+                        Ok(BinaryKv { key: entry_key, .. }) if valid_keys.contains(&entry_key) => {
+                            // Keep entries that don't match the key
+                            updated_buffer.extend_from_slice(reader.buffer());
+                        }
+                        Ok(_) => {
+                            // Skip entries that match the key
+                        }
+                        Err(e) => {
+                            if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                                if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                                    // Reached the end of the serialized data
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        // Close the file and open it in write mode for writing
-        drop(reader); // Release the reader
+                // Close the file and open it in write mode for writing
+                drop(reader); // Release the reader
 
-        let mut writer = io::BufWriter::new(&mut *file);
+                let mut writer = io::BufWriter::new(&mut *file);
 
-        // Truncate the file and write the updated data back
-        writer.get_mut().set_len(0)?;
-        writer.seek(SeekFrom::Start(0))?;
-        writer.write_all(&updated_buffer)?;
-        writer.get_ref().sync_all()?;
+                // Truncate the file and write the updated data back
+                writer.get_mut().set_len(0).expect("Error truncating file");
+                writer.seek(SeekFrom::Start(0)).expect("Error seeking file");
+                writer.write_all(&updated_buffer).expect("Error writing data to file");
+                writer.get_ref().sync_all().expect("Error syncing file");
 
-        for key in valid_keys {
-            self.cache.lock().unwrap().remove(&key);
-        }
+                let mut cache_guard = self.cache.lock().unwrap();
 
-        log::info!("[DELETE_MANY] Deleted {} keys from db", vkc.len());
+                for key in valid_keys {
+                    cache_guard.remove(&key);
+                }
+
+                log::info!("[DELETE_MANY] Deleted {} keys from db", vkc.len());
+            })
+        });
 
         Ok(())
     }
@@ -611,9 +643,13 @@ where
 
         let mut to_set = Vec::new();
 
-        for entry in values.iter() {
-            if self.cache.lock().unwrap().get(&entry.key).is_none() {
-                to_set.push(entry.clone());
+        {
+            let cache_guard = self.cache.lock().unwrap();
+
+            for entry in values.iter() {
+                if cache_guard.get(&entry.key).is_none() {
+                    to_set.push(entry.clone());
+                }
             }
         }
 
@@ -625,83 +661,71 @@ where
             return self.set_many(to_set);
         }
 
-        let mut file = match self.file.lock() {
-            Ok(file) => file,
-            Err(e) => {
-                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
-            }
-        };
+        rayon::scope(|s| {
+            s.spawn(move |_| {
+                let mut file = self.file.lock().unwrap();
+                let mut reader = io::BufReader::new(&mut *file);
+                reader.seek(SeekFrom::Start(0)).expect("Error seeking file");
 
-        let mut reader = io::BufReader::new(&mut *file);
+                let mut updated_entries = Vec::new();
 
-        reader.seek(SeekFrom::Start(self.position))?;
-
-        let mut updated_entries = Vec::new();
-
-        // Read and process entries
-        loop {
-            match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
-                Ok(entry) => {
-                    if let Some(value) = values.iter().find(|v| v.key == entry.key) {
-                        // Update the value associated with the key
-                        let mut updated_entry = entry.clone();
-                        updated_entry.value = value.value.clone();
-                        updated_entries.push(updated_entry);
-                    } else {
-                        updated_entries.push(entry);
-                    }
-                }
-                Err(e) => {
-                    if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
-                        if io_err.kind() == io::ErrorKind::UnexpectedEof {
-                            // Reached the end of the serialized data
-                            break;
+                // Read and process entries
+                loop {
+                    match deserialize_from::<_, BinaryKv<T>>(&mut reader) {
+                        Ok(entry) => {
+                            if let Some(value) = values.iter().find(|v| v.key == entry.key) {
+                                // Update the value associated with the key
+                                let mut updated_entry = entry.clone();
+                                updated_entry.value = value.value.clone();
+                                updated_entries.push(updated_entry);
+                            } else {
+                                updated_entries.push(entry);
+                            }
+                        }
+                        Err(e) => {
+                            if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                                if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                                    // Reached the end of the serialized data
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        // Close the file and open it in write mode
-        drop(reader); // Release the reader
+                // Close the file and open it in write mode
+                drop(reader); // Release the reader
 
-        // Reopen the file in write mode for writing
-        let mut writer = io::BufWriter::new(&mut *file);
+                // Reopen the file in write mode for writing
+                let mut writer = io::BufWriter::new(&mut *file);
 
-        let mut serialized = Vec::new();
+                let mut serialized = Vec::new();
 
-        for entry in updated_entries.iter() {
-            serialized.push(BinaryKv::new(entry.key.clone(), entry.value.clone()))
-        }
+                for entry in updated_entries.iter() {
+                    serialized.push(BinaryKv::new(entry.key.clone(), entry.value.clone()))
+                }
 
-        let serialized = match bincode::serialize(&serialized) {
-            Ok(data) => data,
-            Err(e) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error serializing data: {:?}", e),
-                ));
-            }
-        };
+                let serialized = bincode::serialize(&serialized).expect("Error serializing data");
 
-        log::debug!("[UPDATE_MANY] Serialized {} keys", serialized.len());
+                log::debug!("[UPDATE_MANY] Serialized {} keys", serialized.len());
 
-        // Truncate the file and write the updated data back
-        writer.get_mut().set_len(0)?;
-        writer.seek(SeekFrom::Start(0))?;
-        writer.write_all(&serialized)?;
-        writer.get_ref().sync_all()?;
+                // Truncate the file and write the updated data back
+                writer.get_mut().set_len(0).expect("Error truncating file");
+                writer.seek(SeekFrom::Start(0)).expect("Error seeking file");
+                writer.write_all(&serialized).expect("Error writing data to file");
+                writer.get_ref().sync_all().expect("Error syncing file");
 
-        log::debug!("[UPDATE_MANY] Wrote {} keys to file", serialized.len());
+                log::debug!("[UPDATE_MANY] Wrote {} keys to file", serialized.len());
 
-        for entry in updated_entries.iter() {
-            self.cache
-                .lock()
-                .unwrap()
-                .insert(entry.key.clone(), BinaryKv::new(entry.key.clone(), entry.value.clone()));
-        }
+                let mut cache_guard = self.cache.lock().unwrap();
 
-        log::info!("[UPDATE_MANY] Updated {} keys in db", values.len());
+                for entry in updated_entries.iter() {
+                    cache_guard.insert(entry.key.clone(), BinaryKv::new(entry.key.clone(), entry.value.clone()));
+                }
+
+                log::info!("[UPDATE_MANY] Updated {} keys in db", values.len());
+            })
+        });
 
         Ok(())
     }
