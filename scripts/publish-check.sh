@@ -1,17 +1,17 @@
 #!/bin/bash
 
+# Check if the current directory is a Rust crate
+if ! cargo metadata --no-deps --format-version 1 >/dev/null 2>&1; then
+  echo "Error: Not a Rust crate directory. Please run this script in your crate's root directory."
+  exit 1
+fi
+
 # If not formatted, some cargo commands will fail, this is just a safely check
 ./scripts/fmt-project.sh
 
 # Makes sure no db files exist before running all the test.
 if [ -f "db.qkv" ]; then
   rm db.qkv
-fi
-
-# Check if the current directory is a Rust crate
-if ! cargo metadata --no-deps --format-version 1 >/dev/null 2>&1; then
-  echo "Error: Not a Rust crate directory. Please run this script in your crate's root directory."
-  exit 1
 fi
 
 # Check if cargo fmt reports any formatting issues

@@ -28,7 +28,12 @@ pub enum Value
     None,
 }
 
-/// A util trait for converting a Value a usable type in rust.
+/// A util trait for adding type safety to values.
+///
+/// Because of how the decoder reads the bytes, it is possible to get the wrong type back from the
+/// database. This trait allows you to convert a `Value` into a specific type and makes sure
+/// you have safety when doing so.
+///
 /// ```rust
 /// use quick_kv::prelude::*;
 ///

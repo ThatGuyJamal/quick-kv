@@ -1,14 +1,15 @@
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Seek, SeekFrom, Write};
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use bincode::deserialize_from;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use crate::types::binarykv::BinaryKv;
+use crate::types::binarykv::{BinaryKv, BinaryKvCache};
+use crate::utils::validate_database_file_path;
 
 /// The Mini Client. Used for simple data storage and retrieval.
 ///
@@ -46,16 +47,21 @@ use crate::types::binarykv::BinaryKv;
 pub struct QuickClientMini
 {
     pub file: Arc<Mutex<File>>,
+    pub cache: Arc<Mutex<HashMap<String, BinaryKvCache>>>,
 }
 
 impl QuickClientMini
 {
-    pub fn new(path: Option<PathBuf>) -> io::Result<Self>
+    /// Creates a new instance of the client.
+    ///
+    /// `path` to the database file. If `None` is provided, the database will be created in the current working directory
+    /// and default to `db.qkv`.
+    ///
+    /// You can have as many client instances as you want, however, if you have multiple instances of the same client,
+    /// you need to make sure they write to different databases or else there will be data corruption.
+    pub fn new(path: Option<&str>) -> io::Result<Self>
     {
-        let path = match path {
-            Some(path) => path,
-            None => PathBuf::from("db.qkv"),
-        };
+        let path = validate_database_file_path(path.unwrap_or("db.qkv"));
 
         let file = match OpenOptions::new().read(true).write(true).create(true).open(path) {
             Ok(file) => file,
@@ -66,13 +72,52 @@ impl QuickClientMini
 
         Ok(Self {
             file: Arc::new(Mutex::new(file)),
+            cache: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 
+    /// Get a value from the database.
+    ///
+    /// `key` to get the value for.
+    ///
+    /// Returns `Some(T)` if the key exists, `None` if the key does not exist.
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// let mut client = QuickClientMini::new(None).unwrap();
+    ///
+    /// let result = client.get::<i32>("doesnotexist").unwrap();
+    ///
+    /// assert_eq!(result, None);
+    /// ```
     pub fn get<T>(&mut self, key: &str) -> io::Result<Option<T>>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
+        {
+            let cache = match self.cache.lock() {
+                Ok(cache) => cache,
+                Err(e) => {
+                    return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking cache: {:?}", e)));
+                }
+            };
+
+            if let Some(cache) = cache.get(key) {
+                // We need to convert the cached binary data into the type we want. This is kinda unsafe and a hacky way to have caching but
+                // If works for now. Will look for better solutions in the future.
+                let deserialized_cache: T = match bincode::deserialize(&cache.value) {
+                    Ok(data) => data,
+                    Err(e) => {
+                        return Err(io::Error::new(
+                            io::ErrorKind::Other,
+                            format!("Error deserializing data from cache: {:?}", e),
+                        ));
+                    }
+                };
+                return Ok(Some(deserialized_cache));
+            }
+        }
+
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
@@ -106,46 +151,99 @@ impl QuickClientMini
         Ok(None)
     }
 
+    /// Set a value in the database.
+    ///
+    /// `key` to set the value for.
+    ///
+    /// `value` to set for the key.
+    ///
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// let mut client = QuickClientMini::new(None).unwrap();
+    ///
+    /// client.set("five", Value::I32(5).into_i32()).unwrap();
+    ///
+    /// let five = client.get::<i32>("five").unwrap().unwrap();
+    ///
+    /// assert_eq!(five, 5);
+    /// ```
     pub fn set<T>(&mut self, key: &str, value: T) -> io::Result<()>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
-        if self.get::<T>(key)?.is_none() {
-            // Key doesn't exist, add a new key-value pair
-            let mut file = match self.file.lock() {
-                Ok(file) => file,
-                Err(e) => {
-                    return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
-                }
-            };
-
-            let mut writer = io::BufWriter::new(&mut *file);
-
-            let data = BinaryKv::new(key.to_string(), value.clone());
-
-            let serialized = match bincode::serialize(&data) {
-                Ok(data) => data,
-                Err(e) => panic!("Error serializing data: {:?}", e),
-            };
-
-            // Write the serialized data to the file
-            writer.write_all(&serialized)?;
-
-            // Flush the writer to ensure data is written to the file
-            writer.flush()?;
-            writer.get_ref().sync_all()?;
-        } else {
-            // Key already exists, update the value
-            self.update(key, value)?;
+        {
+            // If the key exists, update the value instead of adding a new key-value pair
+            if self.cache.lock().unwrap().get(key).is_some() {
+                return self.update(key, value);
+            }
         }
+
+        // Key doesn't exist, add a new key-value pair
+        let mut file = match self.file.lock() {
+            Ok(file) => file,
+            Err(e) => {
+                return Err(io::Error::new(io::ErrorKind::Other, format!("Error locking file: {:?}", e)));
+            }
+        };
+
+        let mut writer = io::BufWriter::new(&mut *file);
+
+        let data = BinaryKv::new(key.to_string(), value.clone());
+
+        let serialized = match bincode::serialize(&data) {
+            Ok(data) => data,
+            Err(e) => panic!("Error serializing data: {:?}", e),
+        };
+
+        // Write the serialized data to the file
+        writer.write_all(&serialized)?;
+
+        // Flush the writer to ensure data is written to the file
+        writer.flush()?;
+        writer.get_ref().sync_all()?;
+
+        let serialize_cache = bincode::serialize(&value).unwrap();
+
+        self.cache.lock().unwrap().insert(
+            key.to_string(),
+            BinaryKvCache {
+                key: key.to_string(),
+                value: serialize_cache,
+            },
+        );
 
         Ok(())
     }
 
+    /// Delete a value from the database.
+    ///
+    /// `key` to delete the value for.
+    ///
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// let mut client = QuickClientMini::new(None).unwrap();
+    ///
+    /// client.set("five", Value::I32(5).into_i32()).unwrap();
+    ///
+    /// client.delete::<i32>("five").unwrap();
+    ///
+    /// let should_not_exist = client.get::<i32>("five").unwrap();
+    ///
+    /// assert_eq!(should_not_exist, None);
+    /// ```
     pub fn delete<T>(&mut self, key: &str) -> io::Result<()>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
+        // If the key is not in the cache, dont do anything as it doesn't exist on the file.
+        {
+            if self.cache.lock().unwrap().remove(key).is_none() {
+                return Ok(());
+            }
+        }
+
         let mut file = match self.file.lock() {
             Ok(file) => file,
             Err(e) => {
@@ -190,16 +288,41 @@ impl QuickClientMini
         writer.flush()?;
         writer.get_ref().sync_all()?;
 
-        // Flush the writer to ensure data is written to the file
-        writer.flush()?;
+        self.cache.lock().unwrap().remove(key);
 
         Ok(())
     }
 
+    /// Update a value in the database.
+    ///
+    /// `key` to update the value for.
+    ///
+    /// `value` to update for the key.
+    ///
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// let mut client = QuickClientMini::new(None).unwrap();
+    ///
+    /// client.set("five", Value::I32(5).into_i32()).unwrap();
+    /// let five = client.get::<i32>("five").unwrap().unwrap();
+    /// assert_eq!(five, 5);
+    ///
+    /// client.update("five", 10).unwrap();
+    /// let ten = client.get::<i32>("five").unwrap().unwrap();
+    /// assert_eq!(ten, 10);
+    /// ```
     pub fn update<T>(&mut self, key: &str, value: T) -> io::Result<()>
     where
         T: Serialize + DeserializeOwned + Clone + Debug,
     {
+        {
+            // If the value does not exist in cache, then we can set it and not update
+            if self.cache.lock().unwrap().get(key).is_none() {
+                return self.set(key, value);
+            }
+        }
+
         // Lock the file and use a buffered reader
         let mut file = match self.file.lock() {
             Ok(file) => file,
@@ -270,6 +393,13 @@ impl QuickClientMini
         writer.flush()?;
         writer.get_ref().sync_all()?;
 
+        let serialize_cache = bincode::serialize(&value).unwrap();
+
+        self.cache
+            .lock()
+            .unwrap()
+            .insert(key.to_string(), BinaryKvCache::new(key.to_string(), serialize_cache));
+
         Ok(())
     }
 }
@@ -289,7 +419,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClientMini::new(Some(tmp_file)).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.to_str().unwrap())).unwrap();
 
         let value = String::from("Hello World!");
         client.set("hello", value).unwrap();
@@ -301,7 +431,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClientMini::new(Some(tmp_file.clone())).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.to_str().unwrap())).unwrap();
 
         // Set the initial value for the key
         client.set("hello9", String::from("Hello World!")).unwrap();
@@ -324,7 +454,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClientMini::new(Some(tmp_file)).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.to_str().unwrap())).unwrap();
 
         let value = String::from("Hello World!");
         client.set("hello2", value.clone()).unwrap();
@@ -339,7 +469,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClientMini::new(Some(tmp_file)).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.to_str().unwrap())).unwrap();
 
         let value = String::from("Hello World!");
         client.set("hello3", value).unwrap();
@@ -354,7 +484,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClientMini::new(Some(tmp_file)).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.to_str().unwrap())).unwrap();
         let value = String::from("Hello World!");
 
         client.set("hello5", value.clone()).unwrap();
@@ -370,7 +500,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClientMini::new(Some(tmp_file)).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.to_str().unwrap())).unwrap();
         let value = String::from("Hello World!");
 
         client.set("hello7", value.clone()).unwrap();
@@ -389,7 +519,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClientMini::new(Some(tmp_file.clone())).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.to_str().unwrap())).unwrap();
 
         client.set::<String>("hello8", String::from("Hello World!")).unwrap();
 
@@ -408,7 +538,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClientMini::new(Some(tmp_file.clone())).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.to_str().unwrap())).unwrap();
 
         let mut v = Vec::new();
 
@@ -433,7 +563,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv");
 
-        let mut client = QuickClientMini::new(Some(tmp_file.clone())).unwrap();
+        let mut client = QuickClientMini::new(Some(tmp_file.to_str().unwrap())).unwrap();
 
         let mut map = HashMap::new();
 

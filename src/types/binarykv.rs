@@ -64,3 +64,24 @@ where
         })
     }
 }
+
+/// Bytes of data that are cached in memory for speed improvements on the mini client.
+/// ```rust
+/// use quick_kv::prelude::*;
+/// use quick_kv::types::binarykv::BinaryKvCache;
+///
+/// let cache = BinaryKvCache::new("key".to_string(), "value".to_string().into_bytes());
+#[derive(Serialize, PartialEq, Debug, Clone, Eq, Hash, PartialOrd)]
+pub struct BinaryKvCache
+{
+    pub key: String,
+    pub value: Vec<u8>,
+}
+
+impl BinaryKvCache
+{
+    pub fn new(key: String, value: Vec<u8>) -> Self
+    {
+        Self { key, value }
+    }
+}

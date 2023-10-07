@@ -2,7 +2,6 @@ use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::hash::Hash;
 use std::io::{self, BufRead, Seek, SeekFrom, Write};
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use bincode::deserialize_from;
@@ -15,31 +14,33 @@ use simple_logger::SimpleLogger;
 use time::macros::format_description;
 
 use crate::types::binarykv::BinaryKv;
+use crate::utils::validate_database_file_path;
 
+/// Configurations for the client
 #[derive(Debug, Clone)]
-pub struct QuickConfiguration
+pub struct QuickConfiguration<'a>
 {
-    pub path: Option<PathBuf>,
+    pub path: Option<&'a str>,
     pub logs: bool,
     pub log_level: Option<LevelFilter>,
 }
 
-impl QuickConfiguration
+impl<'a> QuickConfiguration<'a>
 {
-    pub fn new(path: Option<PathBuf>, logs: bool, log_level: Option<LevelFilter>) -> Self
+    pub fn new(path: Option<&'a str>, logs: bool, log_level: Option<LevelFilter>) -> Self
     {
         Self { path, logs, log_level }
     }
 }
 
-impl Default for QuickConfiguration
+impl Default for QuickConfiguration<'_>
 {
     fn default() -> Self
     {
         Self {
-            path: Some(PathBuf::from("db.qkv")),
+            path: None,
             logs: false,
-            log_level: Some(LevelFilter::Info),
+            log_level: None,
         }
     }
 }
@@ -65,7 +66,7 @@ impl Default for QuickConfiguration
 ///     age: u8,
 /// }
 ///
-/// let config = QuickConfiguration::new(Some(PathBuf::from("db.qkv")), true, None);
+/// let config = QuickConfiguration::new(Some("db.qkv"), true, None);
 ///
 /// let mut client = QuickClient::<User>::new(Some(config)).unwrap();
 ///
@@ -82,20 +83,23 @@ impl Default for QuickConfiguration
 /// ```
 #[cfg(feature = "full")]
 #[derive(Debug, Clone)]
-pub struct QuickClient<T>
+pub struct QuickClient<'a, T>
 where
     T: Serialize + DeserializeOwned + Clone + Debug + Eq + PartialEq + Hash + Send + Sync,
 {
     pub file: Arc<Mutex<File>>,
     pub cache: Arc<Mutex<HashMap<String, BinaryKv<T>>>>,
-    pub config: QuickConfiguration,
+    pub config: QuickConfiguration<'a>,
 }
 
-impl<T> QuickClient<T>
+impl<'a, T> QuickClient<'a, T>
 where
     T: Serialize + DeserializeOwned + Clone + Debug + Eq + PartialEq + Hash + Send + Sync,
 {
-    pub fn new(config: Option<QuickConfiguration>) -> std::io::Result<Self>
+    /// Creates a new instance of the client
+    ///
+    /// `config` is an optional configuration struct that allows you to configure the client.
+    pub fn new(config: Option<QuickConfiguration<'a>>) -> std::io::Result<Self>
     {
         let config = match config {
             Some(config) => config,
@@ -116,12 +120,9 @@ where
                 .unwrap();
         }
 
-        let file = match OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(&config.clone().path.unwrap())
-        {
+        let path = validate_database_file_path(&config.clone().path.unwrap_or("db.qkv"));
+
+        let file = match OpenOptions::new().read(true).write(true).create(true).open(path) {
             Ok(file) => file,
             Err(e) => {
                 return Err(io::Error::new(io::ErrorKind::Other, format!("Error opening file: {:?}", e)));
@@ -133,7 +134,7 @@ where
         Ok(Self {
             file: Arc::new(Mutex::new(file)),
             cache: Arc::new(Mutex::new(HashMap::new())),
-            config,
+            config: config.clone(),
         })
     }
 
@@ -757,7 +758,7 @@ mod feature_tests
         let tmp_file = tmp_dir.path().join("test.qkv");
 
         match QuickClient::<String>::new(Some(QuickConfiguration {
-            path: Some(tmp_file.clone()),
+            path: Some(tmp_file.to_str().unwrap()),
             ..Default::default()
         })) {
             Ok(_) => Ok(()),
@@ -775,7 +776,7 @@ mod feature_tests
         let tmp_file = tmp_dir.path().join("test.qkv");
 
         let mut client = QuickClient::<String>::new(Some(QuickConfiguration {
-            path: Some(tmp_file.clone()),
+            path: Some(tmp_file.to_str().unwrap()),
             ..Default::default()
         }))?;
 
@@ -795,7 +796,7 @@ mod feature_tests
         let tmp_file = tmp_dir.path().join("test.qkv");
 
         let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
-            path: Some(tmp_file.clone()),
+            path: Some(tmp_file.to_str().unwrap()),
             ..Default::default()
         }))?;
 
@@ -820,7 +821,7 @@ mod feature_tests
         let tmp_file = tmp_dir.path().join("test.qkv");
 
         let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
-            path: Some(tmp_file.clone()),
+            path: Some(tmp_file.to_str().unwrap()),
             ..Default::default()
         }))?;
 
@@ -846,7 +847,7 @@ mod feature_tests
         let tmp_file = tmp_dir.path().join("test.qkv");
 
         let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
-            path: Some(tmp_file.clone()),
+            path: Some(tmp_file.to_str().unwrap()),
             ..Default::default()
         }))?;
 
@@ -873,7 +874,7 @@ mod feature_tests
         let tmp_file = tmp_dir.path().join("test.qkv");
 
         let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
-            path: Some(tmp_file.clone()),
+            path: Some(tmp_file.to_str().unwrap()),
             ..Default::default()
         }))?;
 
@@ -897,7 +898,7 @@ mod feature_tests
         let tmp_file = tmp_dir.path().join("test.qkv");
 
         let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
-            path: Some(tmp_file.clone()),
+            path: Some(tmp_file.to_str().unwrap()),
             ..Default::default()
         }))?;
 
@@ -923,7 +924,7 @@ mod feature_tests
         let tmp_file = tmp_dir.path().join("test.qkv");
 
         let mut client = QuickClient::<i32>::new(Some(QuickConfiguration {
-            path: Some(tmp_file.clone()),
+            path: Some(tmp_file.to_str().unwrap()),
             ..Default::default()
         }))?;
 

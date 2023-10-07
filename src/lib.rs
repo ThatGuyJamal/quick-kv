@@ -35,17 +35,14 @@
 //! need high performance read times.
 //!
 //! Pros:
-//! - Can store any type of data
-//! - No need to define a schema
-//! - Simple API
-//! - Database can store multiple types of data
+//! - Minimal API
+//! - Flexible Data-store
+//! - Small Dependency Size
 //!
 //! Cons:
-//! - Does not use multi-threading for internal operations
-//! - No caching
-//! - No strict schema
-//! - Lots of type conversions to have type safety
-//! - No Complex APIs for advanced operations
+//! - No internal multi-threading
+//! - Wrappers needed for type safety
+//! - Unoptimized caching
 //!
 //! ## QuickClient
 //! [QuickClient] is a client that is optimized for a specific schema and has multi-threading enabled by default. This client
@@ -53,15 +50,13 @@
 //!
 //! Pros:
 //! - Uses multi-threading for internal operations
-//! - Internal caching
-//! - Strict schema
-//! - Type safety
+//! - Strict Data-store schema
+//! - Simpler Type safety
+//! - Optimized caching
 //!
 //! Cons:
-//! - Must define a schema
-//! - Must use a specific type for all data
-//! - Database can only store one type of data
-//! - More complex API
+//! - Single Schema per instance
+//! - Simple Data-store type
 //!
 //! Both clients have there own pros and cons. It is up to you to decide which client is best for your use case.
 //!
@@ -81,3 +76,4 @@
 pub mod client;
 pub mod prelude;
 pub mod types;
+mod utils;

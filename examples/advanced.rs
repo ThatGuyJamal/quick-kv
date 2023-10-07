@@ -1,12 +1,10 @@
-use std::path::PathBuf;
-
 use quick_kv::prelude::*;
 use serde::{Deserialize, Serialize};
 
 fn main()
 {
     let config = QuickConfiguration {
-        path: Some(PathBuf::from("db.qkv")),
+        path: Some("advanced.db"),
         logs: true,
         log_level: Some(LevelFilter::Debug),
     };
