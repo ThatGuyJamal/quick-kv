@@ -30,7 +30,7 @@
 //! QuickKV has two clients: [QuickClientMini] and [QuickClient].
 //!
 //! The [QuickClient] is disabled by default to reduce the dependency size. If you want to use the [QuickClient], you must enable
-//! the `full` feature in your `Cargo.toml` file or run `cargo add quick-kv --features full`.
+//! the `full` feature in your `Cargo.toml`.
 //!
 //!  ## QuickClientMini
 //! [QuickClientMini] is the simplest client. It allows you to CRUD data of any type by leveraging per method generics. It is the
