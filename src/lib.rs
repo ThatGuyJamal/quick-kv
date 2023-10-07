@@ -29,6 +29,9 @@
 //!
 //! QuickKV has two clients: [QuickClientMini] and [QuickClient].
 //!
+//! The [QuickClient] is disabled by default to reduce the dependency size. If you want to use the [QuickClient], you must enable
+//! the `full` feature in your `Cargo.toml` file or run `cargo add quick-kv --features full`.
+//!
 //!  ## QuickClientMini
 //! [QuickClientMini] is the simplest client. It allows you to CRUD data of any type by leveraging per method generics. It is the
 //! recommended client if you have very inconsistent data you want to store in the database or don't
@@ -57,8 +60,6 @@
 //! Cons:
 //! - Single Schema per instance
 //! - Simple Data-store type
-//!
-//! Both clients have there own pros and cons. It is up to you to decide which client is best for your use case.
 //!
 //! # Examples
 //!

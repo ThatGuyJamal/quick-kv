@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::hash::Hash;
 use std::io::{self, BufRead, Seek, SeekFrom, Write};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use bincode::deserialize_from;
@@ -121,6 +122,14 @@ where
         }
 
         let path = validate_database_file_path(&config.clone().path.unwrap_or("db.qkv"));
+
+        // Extract the directory part from the path
+        let dir_path = Path::new(&path).parent().unwrap_or_else(|| Path::new(""));
+
+        // Create the parent directories if they don't exist
+        if !dir_path.exists() {
+            std::fs::create_dir_all(dir_path)?;
+        }
 
         let file = match OpenOptions::new().read(true).write(true).create(true).open(path) {
             Ok(file) => file,
