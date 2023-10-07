@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="9910cbf5-c26a-4912-b91d-856764d091d1" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/cli/Cargo.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cli/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cli/src/main.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/rustfmt.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/cli/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/discord.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/quick-kv.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/core/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/benches/client.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/benches/client.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/benches/mini-client.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/benches/mini-client.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/advanced.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/examples/advanced.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/basic.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/examples/basic.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/renovate.json" beforeDir="false" afterPath="$PROJECT_DIR$/renovate.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rustfmt.toml" beforeDir="false" afterPath="$PROJECT_DIR$/cli/rustfmt.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/fmt-project.sh" beforeDir="false" afterPath="$PROJECT_DIR$/core/scripts/fmt-project.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/full-test.sh" beforeDir="false" afterPath="$PROJECT_DIR$/core/scripts/full-test.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/publish-check.sh" beforeDir="false" afterPath="$PROJECT_DIR$/core/scripts/publish-check.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/test-examples.sh" beforeDir="false" afterPath="$PROJECT_DIR$/core/scripts/test-examples.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/client/core.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/src/client/core.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/client/mini.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/src/client/mini.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/client/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/src/client/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/prelude.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/src/prelude.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/binarykv.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/src/types/binarykv.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/src/types/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/typed_value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/src/types/typed_value.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/src/types/value.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils.rs" beforeDir="false" afterPath="$PROJECT_DIR$/core/src/utils.rs" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="dn4ge2tq" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 2
+}]]></component>
+  <component name="ProjectId" id="2WQ2jJsAQeh5EQ5ZluVmCCy1bC3" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "//wsl$/Ubuntu/home/thatguyjamal/code/projects/quick-kv/cli",
+    "nodejs_package_manager_path": "npm"
+  }
+}]]></component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="9910cbf5-c26a-4912-b91d-856764d091d1" name="Changes" comment="" />
+      <created>1696650618676</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1696650618676</updated>
+      <workItem from="1696650625221" duration="47000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

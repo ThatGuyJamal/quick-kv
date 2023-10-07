@@ -1,0 +1,13 @@
+[package]
+name = "quick-kv-cli"
+version = "0.1.0"
+edition = "2021"
+authors = ["ThatGuyJamal <thatguyjamalbiz@gmai.com>"]
+include = ["Cargo.toml", "LICENSE", "README.md", "src/", "examples/"]
+readme = "README.md"
+categories = ["database", "cli"]
+license = "MIT"
+
+[dependencies]
+clap = { version = "4.4.6", features = ["derive"] }
+quick-kv = { version = "0.2.5", features = ["full"] }
