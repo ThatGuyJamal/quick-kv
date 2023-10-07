@@ -68,7 +68,7 @@
 //! [QuickClientMini]: client/mini/struct.QuickClientMini.html
 //! [QuickClient]: client/core/struct.QuickClient.html
 //! [QuickConfiguration]: struct.QuickConfiguration.html
-//! [examples]: https://github.com/ThatGuyJamal/quick-kv/tree/master/examples
+//! [examples]: https://github.com/ThatGuyJamal/quick-kv/tree/master/core/examples
 //!
 //! [Documentation]: https://docs.rs/quick-kv
 //! [Crates.io]: https://crates.io/crates/quick-kv
