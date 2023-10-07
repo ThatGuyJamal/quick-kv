@@ -23,4 +23,7 @@
 //! [Github]: https://github.com/ThatGuyJamal/quick-kv
 
 pub mod prelude;
+
+mod db;
+mod types;
 mod utils;

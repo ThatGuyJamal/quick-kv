@@ -1,5 +1,6 @@
 /// Makes sure the database path is valid.
-pub fn validate_database_file_path(input: &str) -> String {
+pub fn validate_database_file_path(input: &str) -> String
+{
     let mut result = String::from(input);
 
     if input.ends_with('/') {
