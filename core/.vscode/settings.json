@@ -1,3 +1,11 @@
 {
-	"cSpell.words": ["Hasher", "Kian", "rfind", "rustc", "TTLs"]
+	"cSpell.words": [
+		"bincode",
+		"Deque",
+		"Hasher",
+		"Kian",
+		"rfind",
+		"rustc",
+		"TTLs"
+	]
 }
