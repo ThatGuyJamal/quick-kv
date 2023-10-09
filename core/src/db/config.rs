@@ -20,7 +20,7 @@ pub struct DatabaseConfiguration
     pub(crate) runtime: Option<RunTime>,
     /// If the database should log to stdout.
     ///
-    /// Default: false
+    /// Default: true
     pub(crate) log: Option<bool>,
     /// The log level to use for the database.
     ///
@@ -97,7 +97,7 @@ impl Default for DatabaseConfiguration
         Self {
             path: Some("db.qkv".to_string()),
             runtime: Some(RunTime::new(RuntTimeType::Disk)),
-            log: Some(false),
+            log: Some(true),
             log_level: None,
             default_ttl: None,
         }
