@@ -116,7 +116,7 @@ where
         // Create a channel for TTL check signals.
         let (ttl_sender, ttl_receiver) = mpsc::channel::<TTLSignal>();
 
-        // To access our state from the background task, we need to initialize it first, 
+        // To access our state from the background task, we need to initialize it first,
         // so we create this wrapper struct to hold it and after we send it back to Self.
         let output = Self {
             state: Arc::new(Mutex::new(State {
