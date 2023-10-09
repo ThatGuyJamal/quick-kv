@@ -2,11 +2,13 @@ use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::hash::Hash;
-use std::sync::{mpsc, Arc, Mutex};
+use std::io::{BufReader, BufWriter, Write};
+use std::sync::{mpsc, Arc, Mutex, MutexGuard};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use anyhow::{Ok, Result};
+use chrono::{DateTime, Utc};
 use log::LevelFilter;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -38,21 +40,30 @@ where
     /// created for the same instant. Because of this, the `Instant` is
     /// insufficient for the key. A unique key (`String`) is used to
     /// break these ties.
-    pub(crate) expirations: BTreeSet<(Instant, String)>,
-    pub(crate) file: File,
+    pub(crate) expirations: BTreeSet<(DateTime<Utc>, String)>,
 }
 
 /// Entry in the key-value store
-#[derive(Debug)]
+#[derive(Debug, Serialize, Clone)]
 pub(crate) struct Entry<T>
 where
-    T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone,
+    T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync,
 {
     /// Stored data
     pub(crate) data: T,
     /// Instant at which the entry expires and should be removed from the
     /// database.
-    pub(crate) expires_at: Option<Instant>,
+    pub(crate) expires_at: Option<DateTime<Utc>>,
+}
+
+impl<T> Entry<T>
+where
+    T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync,
+{
+    pub(crate) fn new(data: T, expires_at: Option<DateTime<Utc>>) -> Self
+    {
+        Self { data, expires_at }
+    }
 }
 
 /// Signals sent to the background task
@@ -73,6 +84,8 @@ where
     pub(crate) state: Arc<Mutex<State<S>>>,
     pub(super) config: &'a DatabaseConfiguration,
     pub(super) ttl_manager: mpsc::Sender<TTLSignal>,
+    pub(super) writer: Arc<Mutex<BufWriter<File>>>,
+    pub(super) reader: Arc<Mutex<BufReader<File>>>,
 }
 
 impl<'a, S> Database<'a, S>
@@ -95,6 +108,9 @@ where
             .create(true)
             .open(config.path.as_ref().unwrap())?;
 
+        let file_clone = file.try_clone()?;
+        let file_clone2 = file.try_clone()?;
+
         // Create a channel for TTL check signals.
         let (ttl_sender, ttl_receiver) = mpsc::channel::<TTLSignal>();
 
@@ -110,11 +126,11 @@ where
                     match signal {
                         TTLSignal::Check => {
                             // TTL check signal received, perform TTL checks here.
-                            let now = Instant::now();
-                            let mut state = state_clone.lock().unwrap();
+                            let now = Utc::now();
+                            let mut state: MutexGuard<'_, State<S>> = state_clone.lock().unwrap();
 
                             // Iterate over keys and check TTL.
-                            let mut keys_to_remove = vec![];
+                            let mut keys_to_remove = Vec::new();
 
                             for (key, entry) in state.entries.iter_mut() {
                                 if let Some(expires_at) = entry.expires_at {
@@ -146,60 +162,63 @@ where
             state: Arc::new(Mutex::new(State {
                 entries: HashMap::default(),
                 expirations: BTreeSet::default(),
-                file,
             })),
             config,
             ttl_manager: ttl_sender,
+            writer: Arc::new(Mutex::new(BufWriter::new(file_clone))),
+            reader: Arc::new(Mutex::new(BufReader::new(file_clone2))),
         })
     }
 
     pub(crate) fn get(&mut self, key: String) -> Result<Option<S>>
     {
-        log::info!("[GET] Searching for key: {}", key);
+        log::debug!("[GET] Searching for key: {}", key);
 
-        let mut state = self.state.lock().unwrap();
+        self.ttl_manager.send(TTLSignal::Check)?;
+
+        let state = self.state.lock().unwrap();
 
         if let Some(entry) = state.entries.get(&key) {
-            if let Some(expires_at) = entry.expires_at {
-                if expires_at < Instant::now() {
-                    // The key has expired. Remove it from the database.
-                    state.entries.remove(&key);
-                    state.expirations.remove(&(expires_at, key));
-                    return Ok(None);
-                }
-            }
-
+            log::debug!("[GET] Found key: {}", key);
             return Ok(Some(entry.data.clone()));
         }
 
         Ok(None)
+
+        // Maybe we will check file, if no cache is found. Although for now this should
+        // Never happen so we will just return None if nothing is found.
     }
 
     pub(crate) fn set(&mut self, key: String, value: S, ttl: Option<Duration>) -> Result<()>
     {
         log::info!("[SET] Setting key: {}", key);
 
+        self.ttl_manager.send(TTLSignal::Check)?;
+
         // First check if the data already exists; if so, update it instead
         let mut state = self.state.lock().unwrap();
 
-        let entry = state.entries.insert(
-            key.clone(),
-            Entry {
-                data: value,
-                expires_at: None,
-            },
-        );
+        let expires_at: Option<DateTime<Utc>> = if let Some(ttl) = ttl {
+            Some(Utc::now() + chrono::Duration::from_std(ttl)?)
+        } else {
+            None
+        };
 
-        if let Some(e) = entry {
-            if let Some(when) = e.expires_at {
-                // Remove the old expiration.
-                state.expirations.remove(&(when, key));
-            }
-        }
+        // Build the entry
+        let entry = Entry::new(value, expires_at);
 
-        drop(state);
+        // Set the entry in the state
+        state.entries.insert(key.clone(), entry.clone());
 
-        // todo - write to disk (if disk runtime)
+        // Serialize the entry and write it to the file
+        let mut w = self.writer.lock().unwrap();
+        w.write_all(&bincode::serialize(&entry)?)?;
+
+        // Flush the writer and sync the file
+        w.flush()?;
+        w.get_ref().sync_all()?;
+
+        log::info!("[SET] Key set: {}", key);
 
         Ok(())
     }

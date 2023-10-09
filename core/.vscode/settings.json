@@ -1,11 +1,14 @@
 {
 	"cSpell.words": [
 		"bincode",
+		"chrono",
 		"Deque",
 		"Hasher",
 		"Kian",
+		"nanos",
 		"rfind",
 		"rustc",
+		"subsec",
 		"TTLs"
 	]
 }
