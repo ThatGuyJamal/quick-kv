@@ -92,7 +92,7 @@ impl<'a, S> Database<'a, S>
 where
     S: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,
 {
-    pub(crate) fn new(&self, config: &'a DatabaseConfiguration) -> Result<Self>
+    pub(crate) fn new(config: &'a DatabaseConfiguration) -> Result<Self>
     {
         if config.log.unwrap_or_default() {
             SimpleLogger::new()
@@ -105,18 +105,34 @@ where
         let file = OpenOptions::new()
             .read(true)
             .write(true)
+            .append(true)
             .create(true)
             .open(config.path.as_ref().unwrap())?;
 
+        // Create two clones of the file handle, one for reading and one for writing.
         let file_clone = file.try_clone()?;
         let file_clone2 = file.try_clone()?;
 
         // Create a channel for TTL check signals.
         let (ttl_sender, ttl_receiver) = mpsc::channel::<TTLSignal>();
 
+        // To access our state from the background task, we need to initialize it first, 
+        // so we create this wrapper struct to hold it and after we send it back to Self.
+        let output = Self {
+            state: Arc::new(Mutex::new(State {
+                entries: HashMap::default(),
+                expirations: BTreeSet::default(),
+            })),
+            config,
+            ttl_manager: ttl_sender,
+            writer: Arc::new(Mutex::new(BufWriter::new(file_clone))),
+            reader: Arc::new(Mutex::new(BufReader::new(file_clone2))),
+        };
+
+        let state_clone = output.state.clone();
+
         {
             // Spawn a background thread to manage TTL expiration.
-            let state_clone = self.state.clone();
             thread::spawn(move || {
                 log::debug!("[Bootstrap] Starting background task");
 
@@ -158,16 +174,7 @@ where
 
         log::info!("[Bootstrap] QuickSchemaClient Initialized!");
 
-        Ok(Self {
-            state: Arc::new(Mutex::new(State {
-                entries: HashMap::default(),
-                expirations: BTreeSet::default(),
-            })),
-            config,
-            ttl_manager: ttl_sender,
-            writer: Arc::new(Mutex::new(BufWriter::new(file_clone))),
-            reader: Arc::new(Mutex::new(BufReader::new(file_clone2))),
-        })
+        Ok(output)
     }
 
     pub(crate) fn get(&mut self, key: String) -> Result<Option<S>>
@@ -212,6 +219,7 @@ where
 
         // Serialize the entry and write it to the file
         let mut w = self.writer.lock().unwrap();
+
         w.write_all(&bincode::serialize(&entry)?)?;
 
         // Flush the writer and sync the file
@@ -231,5 +239,20 @@ where
     pub(crate) fn delete(&mut self, key: &str) -> Result<()>
     {
         todo!()
+    }
+}
+
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+
+    #[test]
+    fn test_database_new()
+    {
+        let config = DatabaseConfiguration::default();
+        let db = Database::<String>::new(&config).unwrap();
+
+        assert_eq!(db.config.path, config.path);
     }
 }
