@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use anyhow::Ok;
 use log::LevelFilter;
@@ -32,7 +32,7 @@ pub struct DatabaseConfiguration
     /// If disabled (None), then you will have to manually set the ttl for each entry.
     ///
     /// Default: None
-    pub(crate) default_ttl: Option<Instant>,
+    pub(crate) default_ttl: Option<Duration>,
 }
 
 impl DatabaseConfiguration
@@ -43,7 +43,7 @@ impl DatabaseConfiguration
         runtime: RunTime,
         log: Option<bool>,
         log_level: Option<LevelFilter>,
-        default_ttl: Option<Instant>,
+        default_ttl: Option<Duration>,
     ) -> anyhow::Result<Self>
     {
         let vp = match path {

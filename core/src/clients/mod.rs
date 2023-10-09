@@ -33,19 +33,8 @@ where
     /// # Examples
     /// *With default configuration:*
     /// ```rust
-    /// use quick_kv::prelude::*;
-    ///
-    /// let mut client = QuickClient::<String>::new(None);
     /// ```
-    /// *With custom configuration:*
-    /// ```rust
-    /// use quick_kv::prelude::*;
-    ///
-    /// let config = DatabaseConfiguration::new("db.qkv", RunTimeType::Disk, Some(true), Some(LevelFilter::Debug), None)
-    ///
-    /// let mut client = QuickClient::<String>::new(Some(config));
-    /// ```
-    fn new(&mut self, config: Option<DatabaseConfiguration>) -> Self;
+    fn new(config: Option<DatabaseConfiguration>) -> Self;
 
     /// Get the value associated with a key.
     ///
@@ -54,11 +43,6 @@ where
     ///
     /// # Examples
     /// ```rust
-    /// use quick_kv::prelude::*;
-    ///
-    /// let mut client = QuickClient::<String>::new(None);
-    ///
-    /// let result = client.get("some-key")?;
     /// ```
     /// Do something with the result. After Consuming the result, you
     /// must handle the `Option<T>` that is returned.
@@ -78,15 +62,10 @@ where
     ///
     /// # Examples
     /// ```rust
-    /// use quick_kv::prelude::*;
-    ///
-    /// let mut client = QuickClient::<String>::new(None);
-    ///
-    /// client.set("some-key", "some-value", None)?;
     /// ```
     fn set(&mut self, key: &str, value: T, ttl: Option<Instant>) -> anyhow::Result<()>;
+    fn update(&mut self, key: &str, value: T, ttl: Option<Instant>, upsert: Option<bool>) -> anyhow::Result<()>;
     fn delete(&mut self, key: &str) -> anyhow::Result<()>;
-    fn update(&mut self, key: &str, value: T, ttl: Option<Instant>) -> anyhow::Result<()>;
 
     fn exists(&mut self, key: &str) -> anyhow::Result<bool>;
     fn keys(&mut self) -> anyhow::Result<Vec<String>>;

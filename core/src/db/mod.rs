@@ -2,16 +2,15 @@ use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::hash::Hash;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{self, BufReader, BufWriter, Seek, SeekFrom, Write};
 use std::sync::{mpsc, Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{Ok, Result};
 use chrono::{DateTime, Utc};
 use log::LevelFilter;
 use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{Deserialize, Deserializer, Serialize};
 use simple_logger::SimpleLogger;
 use time::macros::format_description;
 
@@ -49,6 +48,7 @@ pub(crate) struct Entry<T>
 where
     T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync,
 {
+    pub(crate) key: String,
     /// Stored data
     pub(crate) data: T,
     /// Instant at which the entry expires and should be removed from the
@@ -60,9 +60,35 @@ impl<T> Entry<T>
 where
     T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync,
 {
-    pub(crate) fn new(data: T, expires_at: Option<DateTime<Utc>>) -> Self
+    pub(crate) fn new(key: String, data: T, expires_at: Option<DateTime<Utc>>) -> Self
     {
-        Self { data, expires_at }
+        Self { key, data, expires_at }
+    }
+}
+
+impl<'de, T> Deserialize<'de> for Entry<T>
+where
+    T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct EntryHelper<T>
+        {
+            key: String,
+            data: T,
+            expires_at: Option<DateTime<Utc>>,
+        }
+
+        let helper = EntryHelper::<T>::deserialize(deserializer)?;
+
+        Ok(Self {
+            key: helper.key,
+            data: helper.data,
+            expires_at: helper.expires_at,
+        })
     }
 }
 
@@ -92,7 +118,7 @@ impl<'a, S> Database<'a, S>
 where
     S: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,
 {
-    pub(crate) fn new(config: &'a DatabaseConfiguration) -> Result<Self>
+    pub(crate) fn new(config: &'a DatabaseConfiguration) -> anyhow::Result<Self>
     {
         if config.log.unwrap_or_default() {
             SimpleLogger::new()
@@ -177,7 +203,7 @@ where
         Ok(output)
     }
 
-    pub(crate) fn get(&mut self, key: String) -> Result<Option<S>>
+    pub(crate) fn get(&mut self, key: String) -> anyhow::Result<Option<S>>
     {
         log::debug!("[GET] Searching for key: {}", key);
 
@@ -196,7 +222,7 @@ where
         // Never happen so we will just return None if nothing is found.
     }
 
-    pub(crate) fn set(&mut self, key: String, value: S, ttl: Option<Duration>) -> Result<()>
+    pub(crate) fn set(&mut self, key: &str, value: S, ttl: Option<Duration>) -> anyhow::Result<()>
     {
         log::info!("[SET] Setting key: {}", key);
 
@@ -205,21 +231,18 @@ where
         // First check if the data already exists; if so, update it instead
         let mut state = self.state.lock().unwrap();
 
-        let expires_at: Option<DateTime<Utc>> = if let Some(ttl) = ttl {
-            Some(Utc::now() + chrono::Duration::from_std(ttl)?)
-        } else {
-            None
-        };
+        let expires_at: Option<DateTime<Utc>> = self.get_ttl(ttl)?;
 
         // Build the entry
-        let entry = Entry::new(value, expires_at);
+        let entry = Entry::new(key.to_string(), value, expires_at);
 
         // Set the entry in the state
-        state.entries.insert(key.clone(), entry.clone());
+        state.entries.insert(key.to_string(), entry.clone());
 
         // Serialize the entry and write it to the file
-        let mut w = self.writer.lock().unwrap();
+        let mut w: MutexGuard<'_, BufWriter<File>> = self.writer.lock().unwrap();
 
+        w.seek(SeekFrom::End(0))?; // Seek to the end of the file (append)
         w.write_all(&bincode::serialize(&entry)?)?;
 
         // Flush the writer and sync the file
@@ -231,14 +254,151 @@ where
         Ok(())
     }
 
-    pub(crate) fn update(&mut self, key: &str, value: S) -> Result<()>
+    pub(crate) fn update(&mut self, key: &str, value: S, ttl: Option<Duration>, upsert: Option<bool>) -> anyhow::Result<()>
     {
-        todo!()
+        log::info!("[UPDATE] Attempting {} update...", key);
+
+        self.ttl_manager.send(TTLSignal::Check)?;
+
+        let mut state = self.state.lock().unwrap();
+
+        if !state.entries.contains_key(key) {
+            log::debug!("[UPDATE] Key not found: {}", key);
+            return Ok(());
+        }
+
+        let upsert = upsert.unwrap_or_else(|| false);
+
+        if !upsert {
+            log::debug!("[UPDATE] Upsert is disabled, skipping set attempt...");
+            return Ok(());
+        }
+
+        state
+            .entries
+            .insert(key.to_string(), Entry::new(key.to_string(), value.clone(), None));
+
+        let mut r = self.reader.lock().unwrap();
+
+        r.seek(SeekFrom::Start(0))?;
+
+        let mut updated_bytes = Vec::new();
+
+        loop {
+            match bincode::deserialize_from::<_, Entry<S>>(&mut r.get_mut()) {
+                Ok(entry) => {
+                    if key == entry.key {
+                        let _ttl = self.get_ttl(ttl)?;
+                        let new_entry = Entry::new(key.to_string(), value.clone(), _ttl);
+                        updated_bytes.push(new_entry);
+                    } else {
+                        updated_bytes.push(entry)
+                    }
+                }
+                Err(e) => {
+                    if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                        if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                            // Reached the end of the serialized data
+                            break;
+                        } else {
+                            return Err(e.into());
+                        }
+                    }
+                }
+            }
+        }
+
+        drop(r);
+
+        let mut w = self.writer.lock().unwrap();
+
+        w.seek(SeekFrom::Start(0))?;
+
+        for entry in updated_bytes {
+            w.write_all(&bincode::serialize(&entry)?)?;
+        }
+
+        w.flush()?;
+        w.get_ref().sync_all()?;
+
+        log::info!("[UPDATE] Key updated: {}", key);
+
+        Ok(())
     }
 
-    pub(crate) fn delete(&mut self, key: &str) -> Result<()>
+    pub(crate) fn delete(&mut self, key: &str) -> anyhow::Result<()>
     {
-        todo!()
+        log::info!("[DELETE] Deleting key: {}", key);
+
+        self.ttl_manager.send(TTLSignal::Check)?;
+
+        let mut state = self.state.lock().unwrap();
+
+        if !state.entries.contains_key(key) {
+            log::debug!("[DELETE] Key not found: {}", key);
+            return Ok(());
+        }
+
+        state.entries.remove(key);
+
+        let mut r: MutexGuard<'_, BufReader<File>> = self.reader.lock().unwrap();
+
+        let mut new_buff = Vec::new();
+
+        // todo - Iterate over the file and remove the entry
+        // todo - later we need to find a better solution for this as its not preformat to iterate over the whole database
+        // todo - just to delete some data. Maybe we can use a linked list or something else? But for now this will do.
+        loop {
+            match bincode::deserialize_from::<_, Entry<S>>(&mut r.get_mut()) {
+                Ok(Entry { key: entry_key, .. }) => {
+                    if entry_key != key {
+                        new_buff.append(&mut bincode::serialize(&entry_key)?);
+                    } else {
+                        // Skip this entry
+                        continue;
+                    }
+                }
+                Err(e) => {
+                    if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                        if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                            // Reached the end of the serialized data
+                            break;
+                        } else {
+                            return Err(e.into());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Drop the reader so we can write to the file
+        drop(r);
+
+        // Write the new buffer to the file and sync it
+        let mut w: MutexGuard<'_, BufWriter<File>> = self.writer.lock().unwrap();
+        w.seek(SeekFrom::Start(0))?; // Seek to the beginning of the file
+        w.write_all(&new_buff)?;
+        w.flush()?;
+        w.get_ref().sync_all()?;
+
+        log::info!("[DELETE] Key deleted: {}", key);
+
+        Ok(())
+    }
+
+    /// Gets the current ttl if it exists.
+    /// Function will also try the default ttl if configured else it will return None.
+    fn get_ttl(&self, ttl: Option<Duration>) -> anyhow::Result<Option<DateTime<Utc>>>
+    {
+        if let Some(ttl) = ttl {
+            Ok(Some(Utc::now() + chrono::Duration::from_std(ttl)?))
+        } else {
+            if let Some(default_ttl) = self.config.default_ttl {
+                Ok(Some(Utc::now() + chrono::Duration::from_std(default_ttl)?))
+            } else {
+                Ok(None)
+            }
+        }
     }
 }
 
