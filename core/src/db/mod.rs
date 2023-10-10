@@ -129,6 +129,8 @@ where
                 .init()?;
         }
 
+        log::debug!("[Bootstrap] Building Database State");
+
         let file = OpenOptions::new()
             .read(true)
             .write(true)
@@ -225,7 +227,7 @@ where
 
     pub(crate) fn set(&mut self, key: &str, value: S, ttl: Option<Duration>) -> anyhow::Result<()>
     {
-        log::info!("[SET] Setting key: {}", key);
+        log::info!("[SET] Attempting set: {}", key);
 
         self.ttl_manager.send(TTLSignal::Check)?;
 
@@ -270,11 +272,11 @@ where
             return Ok(());
         }
 
-        let upsert = upsert.unwrap_or_else(|| false);
-
-        if !upsert {
-            log::debug!("[UPDATE] Upsert is disabled, skipping set attempt...");
-            return Ok(());
+        if let Some(u) = upsert {
+            if !u {
+                log::debug!("[UPDATE] Upsert not enabled, skipping update");
+                return Ok(());
+            }
         }
 
         state
@@ -292,9 +294,9 @@ where
                 match bincode::deserialize_from::<_, Entry<S>>(&mut r.get_mut()) {
                     Ok(entry) => {
                         if key == entry.key {
+                            // Update the value associated with the key
                             let _ttl = self.get_ttl(ttl)?;
-                            let new_entry = Entry::new(key.to_string(), value.clone(), _ttl);
-                            updated_bytes.push(new_entry);
+                            updated_bytes.push(Entry::new(key.to_string(), value.clone(), _ttl));
                         } else {
                             updated_bytes.push(entry)
                         }
@@ -425,14 +427,55 @@ where
 #[cfg(test)]
 mod tests
 {
+    use anyhow::Result;
+    use tempfile::tempdir;
+
     use super::*;
 
     #[test]
-    fn test_database_new()
+    fn test_database_new() -> Result<()>
     {
         let config = DatabaseConfiguration::default();
-        let db = Database::<String>::new(&config).unwrap();
+        let db = Database::<String>::new(&config)?;
 
         assert_eq!(db.config.path, config.path);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_database_get_set() -> Result<()>
+    {
+        let config = DatabaseConfiguration::default();
+        let mut db = Database::<String>::new(&config)?;
+
+        db.set("test", "test".to_string(), None)?;
+
+        assert_eq!(db.get("test".to_string()).unwrap().unwrap(), "test".to_string());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_database_update() -> Result<()>
+    {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
+
+        let config = DatabaseConfiguration::new(Some(tmp_file), None, Some(false), Some(LevelFilter::Debug), None)?;
+
+        let mut db = Database::<String>::new(&config)?;
+        
+        db.set("test", "test".to_string(), None)?;
+
+        let result = db.get("test".to_string())?.unwrap();
+
+        db.update("test", "test2".to_string(), None, None)?;
+
+        let result = db.get("test".to_string())?.unwrap();
+
+        assert_eq!(result, "test2".to_string());
+
+        Ok(())
     }
 }

@@ -11,6 +11,8 @@
 		"rustc",
 		"Serde",
 		"subsec",
+		"tempdir",
+		"tempfile",
 		"TTLs"
 	]
 }

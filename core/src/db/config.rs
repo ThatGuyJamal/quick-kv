@@ -38,16 +38,15 @@ pub struct DatabaseConfiguration
 impl DatabaseConfiguration
 {
     pub fn new(
-        &self,
         path: Option<String>,
-        runtime: RunTime,
+        runtime: Option<RunTime>,
         log: Option<bool>,
         log_level: Option<LevelFilter>,
         default_ttl: Option<Duration>,
     ) -> anyhow::Result<Self>
     {
         let vp = match path {
-            Some(p) => self.validate_path(p.as_str()),
+            Some(p) => validate_path(p.as_str()),
             None => "db.qkv".to_string(),
         };
 
@@ -61,33 +60,33 @@ impl DatabaseConfiguration
 
         Ok(Self {
             path: Some(vp.to_string()),
-            runtime: Some(runtime),
+            runtime,
             log,
             log_level,
             default_ttl,
         })
     }
+}
 
-    /// Used to validate if the database path is valid.
-    /// If not it will apply the appropriate changes to make it valid.
-    fn validate_path(&self, input: &str) -> String
-    {
-        let mut result = String::from(input);
+/// Used to validate if the database path is valid.
+/// If not it will apply the appropriate changes to make it valid.
+fn validate_path(input: &str) -> String
+{
+    let mut result = String::from(input);
 
-        if input.ends_with('/') {
-            // It's a directory path, so append "db.qkv" to it
-            result.push_str("db.qkv");
-        } else if !input.contains('.') {
-            // It doesn't have an extension, so add ".qkv"
-            result.push_str(".qkv");
-        } else if !input.ends_with(".qkv") {
-            // Ensure it ends with ".qkv"
-            let index = input.rfind('.').unwrap_or(0);
-            result.replace_range(index.., ".qkv");
-        }
-
-        result
+    if input.ends_with('/') {
+        // It's a directory path, so append "db.qkv" to it
+        result.push_str("db.qkv");
+    } else if !input.contains('.') {
+        // It doesn't have an extension, so add ".qkv"
+        result.push_str(".qkv");
+    } else if !input.ends_with(".qkv") {
+        // Ensure it ends with ".qkv"
+        let index = input.rfind('.').unwrap_or(0);
+        result.replace_range(index.., ".qkv");
     }
+
+    result
 }
 
 impl Default for DatabaseConfiguration
