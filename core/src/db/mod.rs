@@ -15,6 +15,7 @@ use simple_logger::SimpleLogger;
 use time::macros::format_description;
 
 use self::config::DatabaseConfiguration;
+use self::runtime::RuntTimeType;
 use crate::types::HashMap;
 
 pub(crate) mod batcher;
@@ -239,15 +240,17 @@ where
         // Set the entry in the state
         state.entries.insert(key.to_string(), entry.clone());
 
-        // Serialize the entry and write it to the file
-        let mut w: MutexGuard<'_, BufWriter<File>> = self.writer.lock().unwrap();
+        if self.is_disk_runtime() {
+            // Serialize the entry and write it to the file
+            let mut w: MutexGuard<'_, BufWriter<File>> = self.writer.lock().unwrap();
 
-        w.seek(SeekFrom::End(0))?; // Seek to the end of the file (append)
-        w.write_all(&bincode::serialize(&entry)?)?;
+            w.seek(SeekFrom::End(0))?; // Seek to the end of the file (append)
+            w.write_all(&bincode::serialize(&entry)?)?;
 
-        // Flush the writer and sync the file
-        w.flush()?;
-        w.get_ref().sync_all()?;
+            // Flush the writer and sync the file
+            w.flush()?;
+            w.get_ref().sync_all()?;
+        }
 
         log::info!("[SET] Key set: {}", key);
 
@@ -278,48 +281,50 @@ where
             .entries
             .insert(key.to_string(), Entry::new(key.to_string(), value.clone(), None));
 
-        let mut r = self.reader.lock().unwrap();
+        if self.is_disk_runtime() {
+            let mut r = self.reader.lock().unwrap();
 
-        r.seek(SeekFrom::Start(0))?;
+            r.seek(SeekFrom::Start(0))?;
 
-        let mut updated_bytes = Vec::new();
+            let mut updated_bytes = Vec::new();
 
-        loop {
-            match bincode::deserialize_from::<_, Entry<S>>(&mut r.get_mut()) {
-                Ok(entry) => {
-                    if key == entry.key {
-                        let _ttl = self.get_ttl(ttl)?;
-                        let new_entry = Entry::new(key.to_string(), value.clone(), _ttl);
-                        updated_bytes.push(new_entry);
-                    } else {
-                        updated_bytes.push(entry)
-                    }
-                }
-                Err(e) => {
-                    if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
-                        if io_err.kind() == io::ErrorKind::UnexpectedEof {
-                            // Reached the end of the serialized data
-                            break;
+            loop {
+                match bincode::deserialize_from::<_, Entry<S>>(&mut r.get_mut()) {
+                    Ok(entry) => {
+                        if key == entry.key {
+                            let _ttl = self.get_ttl(ttl)?;
+                            let new_entry = Entry::new(key.to_string(), value.clone(), _ttl);
+                            updated_bytes.push(new_entry);
                         } else {
-                            return Err(e.into());
+                            updated_bytes.push(entry)
+                        }
+                    }
+                    Err(e) => {
+                        if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                            if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                                // Reached the end of the serialized data
+                                break;
+                            } else {
+                                return Err(e.into());
+                            }
                         }
                     }
                 }
             }
+
+            drop(r);
+
+            let mut w = self.writer.lock().unwrap();
+
+            w.seek(SeekFrom::Start(0))?;
+
+            for entry in updated_bytes {
+                w.write_all(&bincode::serialize(&entry)?)?;
+            }
+
+            w.flush()?;
+            w.get_ref().sync_all()?;
         }
-
-        drop(r);
-
-        let mut w = self.writer.lock().unwrap();
-
-        w.seek(SeekFrom::Start(0))?;
-
-        for entry in updated_bytes {
-            w.write_all(&bincode::serialize(&entry)?)?;
-        }
-
-        w.flush()?;
-        w.get_ref().sync_all()?;
 
         log::info!("[UPDATE] Key updated: {}", key);
 
@@ -341,45 +346,47 @@ where
 
         state.entries.remove(key);
 
-        let mut r: MutexGuard<'_, BufReader<File>> = self.reader.lock().unwrap();
+        if self.is_disk_runtime() {
+            let mut r: MutexGuard<'_, BufReader<File>> = self.reader.lock().unwrap();
 
-        let mut new_buff = Vec::new();
+            let mut new_buff = Vec::new();
 
-        // todo - Iterate over the file and remove the entry
-        // todo - later we need to find a better solution for this as its not preformat to iterate over the whole database
-        // todo - just to delete some data. Maybe we can use a linked list or something else? But for now this will do.
-        loop {
-            match bincode::deserialize_from::<_, Entry<S>>(&mut r.get_mut()) {
-                Ok(Entry { key: entry_key, .. }) => {
-                    if entry_key != key {
-                        new_buff.append(&mut bincode::serialize(&entry_key)?);
-                    } else {
-                        // Skip this entry
-                        continue;
-                    }
-                }
-                Err(e) => {
-                    if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
-                        if io_err.kind() == io::ErrorKind::UnexpectedEof {
-                            // Reached the end of the serialized data
-                            break;
+            // todo - Iterate over the file and remove the entry
+            // todo - later we need to find a better solution for this as its not preformat to iterate over the whole database
+            // todo - just to delete some data. Maybe we can use a linked list or something else? But for now this will do.
+            loop {
+                match bincode::deserialize_from::<_, Entry<S>>(&mut r.get_mut()) {
+                    Ok(Entry { key: entry_key, .. }) => {
+                        if entry_key != key {
+                            new_buff.append(&mut bincode::serialize(&entry_key)?);
                         } else {
-                            return Err(e.into());
+                            // Skip this entry
+                            continue;
+                        }
+                    }
+                    Err(e) => {
+                        if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                            if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                                // Reached the end of the serialized data
+                                break;
+                            } else {
+                                return Err(e.into());
+                            }
                         }
                     }
                 }
             }
+
+            // Drop the reader so we can write to the file
+            drop(r);
+
+            // Write the new buffer to the file and sync it
+            let mut w: MutexGuard<'_, BufWriter<File>> = self.writer.lock().unwrap();
+            w.seek(SeekFrom::Start(0))?; // Seek to the beginning of the file
+            w.write_all(&new_buff)?;
+            w.flush()?;
+            w.get_ref().sync_all()?;
         }
-
-        // Drop the reader so we can write to the file
-        drop(r);
-
-        // Write the new buffer to the file and sync it
-        let mut w: MutexGuard<'_, BufWriter<File>> = self.writer.lock().unwrap();
-        w.seek(SeekFrom::Start(0))?; // Seek to the beginning of the file
-        w.write_all(&new_buff)?;
-        w.flush()?;
-        w.get_ref().sync_all()?;
 
         log::info!("[DELETE] Key deleted: {}", key);
 
@@ -398,6 +405,19 @@ where
             } else {
                 Ok(None)
             }
+        }
+    }
+
+    /// Checks if we need to use disk operations, the default is disk.
+    fn is_disk_runtime(&self) -> bool
+    {
+        if let Some(r) = &self.config.runtime {
+            match r._type {
+                RuntTimeType::Memory => false,
+                RuntTimeType::Disk => true,
+            }
+        } else {
+            true
         }
     }
 }

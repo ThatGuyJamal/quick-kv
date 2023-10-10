@@ -6,8 +6,10 @@
 		"Hasher",
 		"Kian",
 		"nanos",
+		"println",
 		"rfind",
 		"rustc",
+		"Serde",
 		"subsec",
 		"TTLs"
 	]

@@ -1,4 +1,6 @@
-#![allow(dead_code)]
+#![allow(dead_code)] // todo: remove this
+#![allow(unused_imports)] // todo: remove this
+#![allow(unused_variables)] // todo: remove this
 
 //! QuickKV is a offline key-value database designed to be thread safe, fast, and easy to use.
 //!
