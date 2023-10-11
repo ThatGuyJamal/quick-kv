@@ -1,6 +1,6 @@
 [package]
 name = "quick-kv"
-description = "An offline Key-Value Database"
+description = "A reliable key-value storage for modern software"
 version = "0.2.5"
 edition = "2021"
 repository = "https://github.com/ThatGuyJamal/quick-kv"

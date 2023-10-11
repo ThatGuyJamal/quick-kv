@@ -44,7 +44,7 @@ where
 {
     pub(super) state: Arc<Mutex<State<T>>>,
     pub(super) config: &'a DatabaseConfiguration,
-    pub(super) ttl_manager: mpsc::Sender<TTLSignal>,
+    // pub(super) ttl_manager: mpsc::Sender<TTLSignal>,
     pub(super) writer: Arc<Mutex<BufWriter<File>>>,
     pub(super) reader: Arc<Mutex<BufReader<File>>>,
 }
@@ -76,12 +76,12 @@ where
         let file_clone = file.try_clone()?;
         let file_clone2 = file.try_clone()?;
 
-        let (sender, receiver) = mpsc::channel::<TTLSignal>();
+        // let (sender, receiver) = mpsc::channel::<TTLSignal>();
 
         let output = Self {
             state: Arc::new(Mutex::new(State::new())),
             config,
-            ttl_manager: sender,
+            // ttl_manager: sender,
             writer: Arc::new(Mutex::new(BufWriter::new(file_clone))),
             reader: Arc::new(Mutex::new(BufReader::new(file_clone2))),
         };

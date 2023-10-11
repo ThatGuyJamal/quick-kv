@@ -1,6 +1,6 @@
 # Quick-KV
 
-A Fast Key-Value Database in Rust.
+A reliable key-value storage for modern software
 
 ## Features
 
