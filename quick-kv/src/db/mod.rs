@@ -16,84 +16,18 @@ use time::macros::format_description;
 
 use self::config::DatabaseConfiguration;
 use self::runtime::RuntTimeType;
+use crate::db::entry::Entry;
+use crate::db::state::State;
 use crate::types::HashMap;
 
 pub(crate) mod batcher;
 pub(crate) mod config;
-pub(crate) mod runtime;
+pub(super) mod entry;
+pub(super) mod runtime;
+pub(super) mod state;
 
+/// A signal sent to the background task.
 #[derive(Debug)]
-pub(crate) struct State<T>
-where
-    T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone,
-{
-    /// The key-value store entries in memory
-    pub(crate) entries: HashMap<String, Entry<T>>,
-
-    /// Tracks key TTLs.
-    ///
-    /// A `BTreeSet` is used to maintain expirations sorted by when they expire.
-    /// This allows the background task to iterate this map to find the value
-    /// expiring next.
-    ///
-    /// While highly unlikely, it is possible for more than one expiration to be
-    /// created for the same instant. Because of this, the `Instant` is
-    /// insufficient for the key. A unique key (`String`) is used to
-    /// break these ties.
-    pub(crate) expirations: BTreeSet<(DateTime<Utc>, String)>,
-}
-
-/// Entry in the key-value store
-#[derive(Debug, Serialize, Clone)]
-pub(crate) struct Entry<T>
-where
-    T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync,
-{
-    pub(crate) key: String,
-    /// Stored data
-    pub(crate) data: T,
-    /// Instant at which the entry expires and should be removed from the
-    /// database.
-    pub(crate) expires_at: Option<DateTime<Utc>>,
-}
-
-impl<T> Entry<T>
-where
-    T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync,
-{
-    pub(crate) fn new(key: String, data: T, expires_at: Option<DateTime<Utc>>) -> Self
-    {
-        Self { key, data, expires_at }
-    }
-}
-
-impl<'de, T> Deserialize<'de> for Entry<T>
-where
-    T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct EntryHelper<T>
-        {
-            key: String,
-            data: T,
-            expires_at: Option<DateTime<Utc>>,
-        }
-
-        let helper = EntryHelper::<T>::deserialize(deserializer)?;
-
-        Ok(Self {
-            key: helper.key,
-            data: helper.data,
-            expires_at: helper.expires_at,
-        })
-    }
-}
-
-/// Signals sent to the background task
 pub(super) enum TTLSignal
 {
     Check,
@@ -104,20 +38,20 @@ pub(super) enum TTLSignal
 ///
 /// Controls the state of the data-store and the background task.
 #[derive(Debug)]
-pub(crate) struct Database<'a, S>
+pub(crate) struct Database<'a, T>
 where
-    S: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,
+    T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,
 {
-    pub(crate) state: Arc<Mutex<State<S>>>,
+    pub(super) state: Arc<Mutex<State<T>>>,
     pub(super) config: &'a DatabaseConfiguration,
     pub(super) ttl_manager: mpsc::Sender<TTLSignal>,
     pub(super) writer: Arc<Mutex<BufWriter<File>>>,
     pub(super) reader: Arc<Mutex<BufReader<File>>>,
 }
 
-impl<'a, S> Database<'a, S>
+impl<'a, T> Database<'a, T>
 where
-    S: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,
+    T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,
 {
     pub(crate) fn new(config: &'a DatabaseConfiguration) -> anyhow::Result<Self>
     {
@@ -129,7 +63,7 @@ where
                 .init()?;
         }
 
-        log::debug!("[Bootstrap] Building Database State");
+        log::info!("[Bootstrap] Building Database State");
 
         let file = OpenOptions::new()
             .read(true)
@@ -142,58 +76,55 @@ where
         let file_clone = file.try_clone()?;
         let file_clone2 = file.try_clone()?;
 
-        // Create a channel for TTL check signals.
-        let (ttl_sender, ttl_receiver) = mpsc::channel::<TTLSignal>();
+        let (sender, receiver) = mpsc::channel::<TTLSignal>();
 
-        // To access our state from the background task, we need to initialize it first,
-        // so we create this wrapper struct to hold it and after we send it back to Self.
         let output = Self {
-            state: Arc::new(Mutex::new(State {
-                entries: HashMap::default(),
-                expirations: BTreeSet::default(),
-            })),
+            state: Arc::new(Mutex::new(State::new())),
             config,
-            ttl_manager: ttl_sender,
+            ttl_manager: sender,
             writer: Arc::new(Mutex::new(BufWriter::new(file_clone))),
             reader: Arc::new(Mutex::new(BufReader::new(file_clone2))),
         };
 
-        let state_clone = output.state.clone();
-
         {
+            let state_clone = output.state.clone();
             // Spawn a background thread to manage TTL expiration.
             thread::spawn(move || {
                 log::debug!("[Bootstrap] Starting background task");
 
+                let mut thread_state = state_clone.lock().unwrap();
+
                 loop {
-                    let signal = ttl_receiver.recv().unwrap();
+                    let signal = receiver.recv().unwrap();
 
                     match signal {
                         TTLSignal::Check => {
+                            log::debug!("[THREAD TASK] TTL check signal received, checking TTLs");
+
                             // TTL check signal received, perform TTL checks here.
+                            // Find all keys scheduled to expire **before** now.
                             let now = Utc::now();
-                            let mut state: MutexGuard<'_, State<S>> = state_clone.lock().unwrap();
 
-                            // Iterate over keys and check TTL.
-                            let mut keys_to_remove = Vec::new();
+                            log::debug!("expirations found: {}", thread_state.expirations.len());
 
-                            for (key, entry) in state.entries.iter_mut() {
-                                if let Some(expires_at) = entry.expires_at {
-                                    if expires_at <= now {
-                                        // Key has expired, mark it for removal.
-                                        keys_to_remove.push(key.clone());
-                                    }
-                                }
-                            }
+                            let expired_data: Vec<(DateTime<Utc>, String)> = thread_state
+                                .expirations
+                                .iter()
+                                .take_while(|(expiration, _)| *expiration <= now)
+                                .map(|(when, key)| (when.clone(), key.clone()))
+                                .collect::<Vec<_>>();
 
-                            // Remove expired keys.
-                            for key in keys_to_remove {
-                                state.entries.remove(&key);
-                                state.expirations.remove(&(now, key));
+                            log::debug!("expired keys found: {}", expired_data.len());
+
+                            // Remove the expired keys from the state
+                            for (when, key) in expired_data {
+                                log::debug!("removing key: {}", key);
+                                thread_state.entries.remove(&key);
+                                thread_state.expirations.remove(&(when, key));
                             }
                         }
                         TTLSignal::Exit => {
-                            log::warn!("[Bootstrap] Received exit signal, exiting background task");
+                            log::warn!("[THREAD TASK] Received exit signal, exiting background task");
                             break;
                         }
                     }
@@ -206,11 +137,11 @@ where
         Ok(output)
     }
 
-    pub(crate) fn get(&mut self, key: String) -> anyhow::Result<Option<S>>
+    pub(crate) fn get(&mut self, key: String) -> anyhow::Result<Option<T>>
     {
         log::debug!("[GET] Searching for key: {}", key);
 
-        self.ttl_manager.send(TTLSignal::Check)?;
+        self.ttl_manager.send(TTLSignal::Check).unwrap();
 
         let state = self.state.lock().unwrap();
 
@@ -225,11 +156,11 @@ where
         // Never happen so we will just return None if nothing is found.
     }
 
-    pub(crate) fn set(&mut self, key: &str, value: S, ttl: Option<Duration>) -> anyhow::Result<()>
+    pub(crate) fn set(&mut self, key: &str, value: T, ttl: Option<Duration>) -> anyhow::Result<()>
     {
         log::info!("[SET] Attempting set: {}", key);
 
-        self.ttl_manager.send(TTLSignal::Check)?;
+        self.ttl_manager.send(TTLSignal::Check).unwrap();
 
         // First check if the data already exists; if so, update it instead
         let mut state = self.state.lock().unwrap();
@@ -241,6 +172,10 @@ where
 
         // Set the entry in the state
         state.entries.insert(key.to_string(), entry.clone());
+
+        if let Some(expires_at) = entry.expires_at {
+            state.expirations.insert((expires_at, key.to_string()));
+        }
 
         if self.is_disk_runtime() {
             // Serialize the entry and write it to the file
@@ -259,11 +194,11 @@ where
         Ok(())
     }
 
-    pub(crate) fn update(&mut self, key: &str, value: S, ttl: Option<Duration>, upsert: Option<bool>) -> anyhow::Result<()>
+    pub(crate) fn update(&mut self, key: &str, value: T, ttl: Option<Duration>, upsert: Option<bool>) -> anyhow::Result<()>
     {
         log::info!("[UPDATE] Attempting {} update...", key);
 
-        self.ttl_manager.send(TTLSignal::Check)?;
+        self.ttl_manager.send(TTLSignal::Check).unwrap();
 
         let mut state = self.state.lock().unwrap();
 
@@ -279,9 +214,13 @@ where
             }
         }
 
-        state
-            .entries
-            .insert(key.to_string(), Entry::new(key.to_string(), value.clone(), None));
+        let entry: Entry<T> = Entry::new(key.to_string(), value.clone(), None);
+
+        state.entries.insert(key.to_string(), entry.clone());
+
+        if let Some(expires_at) = entry.expires_at {
+            state.expirations.insert((expires_at, key.to_string()));
+        }
 
         if self.is_disk_runtime() {
             let mut r = self.reader.lock().unwrap();
@@ -291,12 +230,11 @@ where
             let mut updated_bytes = Vec::new();
 
             loop {
-                match bincode::deserialize_from::<_, Entry<S>>(&mut r.get_mut()) {
+                match bincode::deserialize_from::<_, Entry<T>>(&mut r.get_mut()) {
                     Ok(entry) => {
                         if key == entry.key {
                             // Update the value associated with the key
-                            let _ttl = self.get_ttl(ttl)?;
-                            updated_bytes.push(Entry::new(key.to_string(), value.clone(), _ttl));
+                            updated_bytes.push(Entry::new(key.to_string(), value.clone(), self.get_ttl(ttl)?));
                         } else {
                             updated_bytes.push(entry)
                         }
@@ -337,8 +275,6 @@ where
     {
         log::info!("[DELETE] Deleting key: {}", key);
 
-        self.ttl_manager.send(TTLSignal::Check)?;
-
         let mut state = self.state.lock().unwrap();
 
         if !state.entries.contains_key(key) {
@@ -357,7 +293,7 @@ where
             // todo - later we need to find a better solution for this as its not preformat to iterate over the whole database
             // todo - just to delete some data. Maybe we can use a linked list or something else? But for now this will do.
             loop {
-                match bincode::deserialize_from::<_, Entry<S>>(&mut r.get_mut()) {
+                match bincode::deserialize_from::<_, Entry<T>>(&mut r.get_mut()) {
                     Ok(Entry { key: entry_key, .. }) => {
                         if entry_key != key {
                             new_buff.append(&mut bincode::serialize(&entry_key)?);
@@ -401,12 +337,10 @@ where
     {
         if let Some(ttl) = ttl {
             Ok(Some(Utc::now() + chrono::Duration::from_std(ttl)?))
+        } else if let Some(default_ttl) = self.config.default_ttl {
+            Ok(Some(Utc::now() + chrono::Duration::from_std(default_ttl)?))
         } else {
-            if let Some(default_ttl) = self.config.default_ttl {
-                Ok(Some(Utc::now() + chrono::Duration::from_std(default_ttl)?))
-            } else {
-                Ok(None)
-            }
+            Ok(None)
         }
     }
 
@@ -462,10 +396,10 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
 
-        let config = DatabaseConfiguration::new(Some(tmp_file), None, Some(false), Some(LevelFilter::Debug), None)?;
+        let config = DatabaseConfiguration::new(Some(tmp_file), None, Some(false), None, None)?;
 
         let mut db = Database::<String>::new(&config)?;
-        
+
         db.set("test", "test".to_string(), None)?;
 
         let result = db.get("test".to_string())?.unwrap();
@@ -475,6 +409,54 @@ mod tests
         let result = db.get("test".to_string())?.unwrap();
 
         assert_eq!(result, "test2".to_string());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_database_delete() -> Result<()>
+    {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
+
+        let config = DatabaseConfiguration::new(Some(tmp_file), None, Some(true), None, None)?;
+
+        let mut db = Database::<String>::new(&config)?;
+
+        db.set("test", "test".to_string(), None)?;
+
+        let result = db.get("test".to_string())?.unwrap();
+
+        db.delete("test")?;
+
+        let result = db.get("test".to_string())?;
+
+        assert_eq!(result, None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_database_ttl() -> Result<()>
+    {
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
+
+        let config = DatabaseConfiguration::new(Some(tmp_file), None, Some(true), Some(LevelFilter::Debug), None)?;
+
+        let mut db = Database::<String>::new(&config)?;
+
+        db.set("test", "test".to_string(), Some(Duration::from_secs(3)))?;
+
+        let result = db.get("test".to_string())?.unwrap();
+
+        assert_eq!(result, "test".to_string());
+
+        std::thread::sleep(Duration::from_secs(10));
+
+        let result = db.get("test".to_string())?;
+
+        assert_eq!(result, None);
 
         Ok(())
     }
