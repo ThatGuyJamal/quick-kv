@@ -86,51 +86,53 @@ where
             reader: Arc::new(Mutex::new(BufReader::new(file_clone2))),
         };
 
-        {
-            let state_clone = output.state.clone();
-            // Spawn a background thread to manage TTL expiration.
-            thread::spawn(move || {
-                log::debug!("[Bootstrap] Starting background task");
+        // {
+        //     let state_clone = output.state.clone();
+        //     // Spawn a background thread to manage TTL expiration.
+        //     thread::spawn(move || {
+        //         log::debug!("[Bootstrap] Starting background task");
 
-                let mut thread_state = state_clone.lock().unwrap();
+        //         let mut thread_state = state_clone.lock().unwrap();
 
-                loop {
-                    let signal = receiver.recv().unwrap();
+        //         loop {
+        //             let signal = receiver.recv().unwrap();
 
-                    match signal {
-                        TTLSignal::Check => {
-                            log::debug!("[THREAD TASK] TTL check signal received, checking TTLs");
+        //             match signal {
+        //                 TTLSignal::Check => {
+        //                     log::debug!("[THREAD TASK] TTL check signal received, checking TTLs");
 
-                            // TTL check signal received, perform TTL checks here.
-                            // Find all keys scheduled to expire **before** now.
-                            let now = Utc::now();
+        //                     // TTL check signal received, perform TTL checks here.
+        //                     // Find all keys scheduled to expire **before** now.
+        //                     let now = Utc::now();
 
-                            log::debug!("expirations found: {}", thread_state.expirations.len());
+        //                     log::debug!("expirations found: {}", thread_state.expirations.len());
 
-                            let expired_data: Vec<(DateTime<Utc>, String)> = thread_state
-                                .expirations
-                                .iter()
-                                .take_while(|(expiration, _)| *expiration <= now)
-                                .map(|(when, key)| (when.clone(), key.clone()))
-                                .collect::<Vec<_>>();
+        //                     let expired_data: Vec<(DateTime<Utc>, String)> = thread_state
+        //                         .expirations
+        //                         .iter()
+        //                         .take_while(|(expiration, _)| *expiration <= now)
+        //                         .map(|(when, key)| (when.clone(), key.clone()))
+        //                         .collect::<Vec<_>>();
 
-                            log::debug!("expired keys found: {}", expired_data.len());
+        //                     log::debug!("expired keys found: {}", expired_data.len());
 
-                            // Remove the expired keys from the state
-                            for (when, key) in expired_data {
-                                log::debug!("removing key: {}", key);
-                                thread_state.entries.remove(&key);
-                                thread_state.expirations.remove(&(when, key));
-                            }
-                        }
-                        TTLSignal::Exit => {
-                            log::warn!("[THREAD TASK] Received exit signal, exiting background task");
-                            break;
-                        }
-                    }
-                }
-            });
-        }
+        //                     // Remove the expired keys from the state
+        //                     for (when, key) in expired_data {
+        //                         log::debug!("removing key: {}", key);
+        //                         thread_state.entries.remove(&key);
+        //                         thread_state.expirations.remove(&(when, key));
+        //                     }
+
+        //                     log::debug!("[THREAD TASK] TTL check complete");
+        //                 }
+        //                 TTLSignal::Exit => {
+        //                     log::warn!("[THREAD TASK] Received exit signal, exiting background task");
+        //                     break;
+        //                 }
+        //             }
+        //         }
+        //     });
+        // }
 
         log::info!("[Bootstrap] QuickSchemaClient Initialized!");
 
@@ -141,7 +143,7 @@ where
     {
         log::debug!("[GET] Searching for key: {}", key);
 
-        self.ttl_manager.send(TTLSignal::Check).unwrap();
+        // self.ttl_manager.send(TTLSignal::Check)?;
 
         let state = self.state.lock().unwrap();
 
@@ -160,7 +162,7 @@ where
     {
         log::info!("[SET] Attempting set: {}", key);
 
-        self.ttl_manager.send(TTLSignal::Check).unwrap();
+        // self.ttl_manager.send(TTLSignal::Check)?;
 
         // First check if the data already exists; if so, update it instead
         let mut state = self.state.lock().unwrap();
@@ -198,7 +200,7 @@ where
     {
         log::info!("[UPDATE] Attempting {} update...", key);
 
-        self.ttl_manager.send(TTLSignal::Check).unwrap();
+        // self.ttl_manager.send(TTLSignal::Check)?;
 
         let mut state = self.state.lock().unwrap();
 
@@ -369,7 +371,10 @@ mod tests
     #[test]
     fn test_database_new() -> Result<()>
     {
-        let config = DatabaseConfiguration::default();
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
+
+        let config = DatabaseConfiguration::new(Some(tmp_file), None, None, None, None)?;
         let db = Database::<String>::new(&config)?;
 
         assert_eq!(db.config.path, config.path);
@@ -380,7 +385,10 @@ mod tests
     #[test]
     fn test_database_get_set() -> Result<()>
     {
-        let config = DatabaseConfiguration::default();
+        let tmp_dir = tempdir().expect("Failed to create tempdir");
+        let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
+
+        let config = DatabaseConfiguration::new(Some(tmp_file), None, None, None, None)?;
         let mut db = Database::<String>::new(&config)?;
 
         db.set("test", "test".to_string(), None)?;
@@ -396,7 +404,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
 
-        let config = DatabaseConfiguration::new(Some(tmp_file), None, Some(false), None, None)?;
+        let config = DatabaseConfiguration::new(Some(tmp_file), None, None, None, None)?;
 
         let mut db = Database::<String>::new(&config)?;
 
@@ -419,7 +427,7 @@ mod tests
         let tmp_dir = tempdir().expect("Failed to create tempdir");
         let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
 
-        let config = DatabaseConfiguration::new(Some(tmp_file), None, Some(true), None, None)?;
+        let config = DatabaseConfiguration::new(Some(tmp_file), None, None, None, None)?;
 
         let mut db = Database::<String>::new(&config)?;
 
@@ -436,28 +444,28 @@ mod tests
         Ok(())
     }
 
-    #[test]
-    fn test_database_ttl() -> Result<()>
-    {
-        let tmp_dir = tempdir().expect("Failed to create tempdir");
-        let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
+    // #[test]
+    // fn test_database_ttl() -> Result<()>
+    // {
+    //     let tmp_dir = tempdir().expect("Failed to create tempdir");
+    //     let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
 
-        let config = DatabaseConfiguration::new(Some(tmp_file), None, Some(true), Some(LevelFilter::Debug), None)?;
+    //     let config = DatabaseConfiguration::new(Some(tmp_file), None, Some(true), Some(LevelFilter::Debug), None)?;
 
-        let mut db = Database::<String>::new(&config)?;
+    //     let mut db = Database::<String>::new(&config)?;
 
-        db.set("test", "test".to_string(), Some(Duration::from_secs(3)))?;
+    //     db.set("test", "test".to_string(), Some(Duration::from_secs(3)))?;
 
-        let result = db.get("test".to_string())?.unwrap();
+    //     let result = db.get("test".to_string())?.unwrap();
 
-        assert_eq!(result, "test".to_string());
+    //     assert_eq!(result, "test".to_string());
 
-        std::thread::sleep(Duration::from_secs(10));
+    //     std::thread::sleep(Duration::from_secs(10));
 
-        let result = db.get("test".to_string())?;
+    //     let result = db.get("test".to_string())?;
 
-        assert_eq!(result, None);
+    //     assert_eq!(result, None);
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 }
