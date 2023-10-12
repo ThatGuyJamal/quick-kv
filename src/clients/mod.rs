@@ -35,7 +35,20 @@ pub struct ClientConfig
     pub default_ttl: Option<Duration>,
 }
 
-pub(crate) trait BaseClient<T>
+impl Default for ClientConfig
+{
+    fn default() -> Self
+    {
+        Self {
+            path: "cli.qkv".to_string().into(),
+            log: true.into(),
+            log_level: LevelFilter::Info.into(),
+            default_ttl: None,
+        }
+    }
+}
+
+pub trait BaseClient<T>
 where
     T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync,
 {

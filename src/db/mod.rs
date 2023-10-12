@@ -44,9 +44,8 @@ where
 {
     pub(super) state: Arc<Mutex<State<T>>>,
     pub(super) config: DatabaseConfiguration,
-    // pub(super) ttl_manager: mpsc::Sender<TTLSignal>,
-    pub(super) writer: Arc<Mutex<BufWriter<File>>>,
-    pub(super) reader: Arc<Mutex<BufReader<File>>>,
+    pub(super) writer: Option<Arc<Mutex<BufWriter<File>>>>,
+    pub(super) reader: Option<Arc<Mutex<BufReader<File>>>>,
 }
 
 impl<T> Database<T>
@@ -55,6 +54,8 @@ where
 {
     pub(crate) fn new(config: DatabaseConfiguration) -> anyhow::Result<Self>
     {
+        let config_clone = config.clone();
+
         if config.log.unwrap_or_default() {
             SimpleLogger::new()
                 .with_colors(true)
@@ -65,24 +66,52 @@ where
 
         log::info!("[Bootstrap] Building Database State");
 
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .append(true)
-            .create(true)
-            .open(config.path.as_ref().unwrap())?;
-
-        // Create two clones of the file handle, one for reading and one for writing.
-        let file_clone = file.try_clone()?;
-        let file_clone2 = file.try_clone()?;
+        // Create file as an Option<File> based on runtime
+        let file = if config
+            .runtime
+            .as_ref()
+            .map(|rt| rt._type == RuntTimeType::Disk)
+            .unwrap_or(false)
+        {
+            log::info!("[Bootstrap] Database file created or opened!");
+            Some(
+                OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(config.path.clone().unwrap_or_default())?,
+            )
+        } else {
+            None
+        };
 
         // let (sender, receiver) = mpsc::channel::<TTLSignal>();
 
         let output = Self {
             state: Arc::new(Mutex::new(State::new())),
-            config,
-            writer: Arc::new(Mutex::new(BufWriter::new(file_clone))),
-            reader: Arc::new(Mutex::new(BufReader::new(file_clone2))),
+            config: config_clone.clone(),
+            writer: if config_clone
+                .runtime
+                .as_ref()
+                .map(|rt| rt._type == RuntTimeType::Disk)
+                .unwrap_or_default()
+            {
+                let file_clone = file.as_ref().map(|f| f.try_clone()).transpose()?;
+                Some(Arc::new(Mutex::new(BufWriter::new(file_clone.unwrap()))))
+            } else {
+                None
+            },
+            reader: if config
+                .runtime
+                .as_ref()
+                .map(|rt| rt._type == RuntTimeType::Disk)
+                .unwrap_or_default()
+            {
+                let file_clone2 = file.as_ref().map(|f| f.try_clone()).transpose()?;
+                Some(Arc::new(Mutex::new(BufReader::new(file_clone2.unwrap()))))
+            } else {
+                None
+            },
         };
 
         log::info!("[Bootstrap] QuickSchemaClient Initialized!");
@@ -111,7 +140,7 @@ where
 
     pub(crate) fn set(&mut self, key: &str, value: T, ttl: Option<Duration>) -> anyhow::Result<()>
     {
-        log::info!("[SET] Attempting set: {}", key);
+        log::debug!("[SET] Attempting set: {}", key);
 
         // First check if the data already exists; if so, update it instead
         let mut state = self.state.lock().unwrap();
@@ -129,15 +158,17 @@ where
         }
 
         if self.is_disk_runtime() {
-            // Serialize the entry and write it to the file
-            let mut w: MutexGuard<'_, BufWriter<File>> = self.writer.lock().unwrap();
+            if let Some(ref writer) = self.writer {
+                // Serialize the entry and write it to the file
+                let mut w = writer.lock().unwrap();
 
-            w.seek(SeekFrom::End(0))?; // Seek to the end of the file (append)
-            w.write_all(&bincode::serialize(&entry)?)?;
+                w.seek(SeekFrom::End(0))?; // Seek to the end of the file (append)
+                w.write_all(&bincode::serialize(&entry)?)?;
 
-            // Flush the writer and sync the file
-            w.flush()?;
-            w.get_ref().sync_all()?;
+                // Flush the writer and sync the file
+                w.flush()?;
+                w.get_ref().sync_all()?;
+            }
         }
 
         log::info!("[SET] Key set: {}", key);
@@ -147,7 +178,7 @@ where
 
     pub(crate) fn update(&mut self, key: &str, value: T, ttl: Option<Duration>, upsert: Option<bool>) -> anyhow::Result<()>
     {
-        log::info!("[UPDATE] Attempting {} update...", key);
+        log::debug!("[UPDATE] Attempting {} update...", key);
 
         let mut state = self.state.lock().unwrap();
 
@@ -172,47 +203,50 @@ where
         }
 
         if self.is_disk_runtime() {
-            let mut r = self.reader.lock().unwrap();
-
-            r.seek(SeekFrom::Start(0))?;
-
             let mut updated_bytes = Vec::new();
+            if let Some(ref reader) = self.reader {
+                let mut r = reader.lock().unwrap();
 
-            loop {
-                match bincode::deserialize_from::<_, Entry<T>>(&mut r.get_mut()) {
-                    Ok(entry) => {
-                        if key == entry.key {
-                            // Update the value associated with the key
-                            updated_bytes.push(Entry::new(key.to_string(), value.clone(), self.get_ttl(ttl)?));
-                        } else {
-                            updated_bytes.push(entry)
-                        }
-                    }
-                    Err(e) => {
-                        if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
-                            if io_err.kind() == io::ErrorKind::UnexpectedEof {
-                                // Reached the end of the serialized data
-                                break;
+                r.seek(SeekFrom::Start(0))?;
+
+                loop {
+                    match bincode::deserialize_from::<_, Entry<T>>(&mut r.get_mut()) {
+                        Ok(entry) => {
+                            if key == entry.key {
+                                // Update the value associated with the key
+                                updated_bytes.push(Entry::new(key.to_string(), value.clone(), self.get_ttl(ttl)?));
                             } else {
-                                return Err(e.into());
+                                updated_bytes.push(entry)
+                            }
+                        }
+                        Err(e) => {
+                            if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                                if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                                    // Reached the end of the serialized data
+                                    break;
+                                } else {
+                                    return Err(e.into());
+                                }
                             }
                         }
                     }
                 }
+
+                drop(r);
             }
 
-            drop(r);
+            if let Some(ref writer) = self.writer {
+                let mut w = writer.lock().unwrap();
 
-            let mut w = self.writer.lock().unwrap();
+                w.seek(SeekFrom::Start(0))?;
 
-            w.seek(SeekFrom::Start(0))?;
+                for entry in updated_bytes {
+                    w.write_all(&bincode::serialize(&entry)?)?;
+                }
 
-            for entry in updated_bytes {
-                w.write_all(&bincode::serialize(&entry)?)?;
+                w.flush()?;
+                w.get_ref().sync_all()?;
             }
-
-            w.flush()?;
-            w.get_ref().sync_all()?;
         }
 
         log::info!("[UPDATE] Key updated: {}", key);
@@ -222,7 +256,7 @@ where
 
     pub(crate) fn delete(&mut self, key: &str) -> anyhow::Result<()>
     {
-        log::info!("[DELETE] Deleting key: {}", key);
+        log::debug!("[DELETE] Deleting key: {}", key);
 
         let mut state = self.state.lock().unwrap();
 
@@ -234,45 +268,49 @@ where
         state.entries.remove(key);
 
         if self.is_disk_runtime() {
-            let mut r: MutexGuard<'_, BufReader<File>> = self.reader.lock().unwrap();
-
             let mut new_buff = Vec::new();
 
-            // todo - Iterate over the file and remove the entry
-            // todo - later we need to find a better solution for this as its not preformat to iterate over the whole database
-            // todo - just to delete some data. Maybe we can use a linked list or something else? But for now this will do.
-            loop {
-                match bincode::deserialize_from::<_, Entry<T>>(&mut r.get_mut()) {
-                    Ok(Entry { key: entry_key, .. }) => {
-                        if entry_key != key {
-                            new_buff.append(&mut bincode::serialize(&entry_key)?);
-                        } else {
-                            // Skip this entry
-                            continue;
-                        }
-                    }
-                    Err(e) => {
-                        if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
-                            if io_err.kind() == io::ErrorKind::UnexpectedEof {
-                                // Reached the end of the serialized data
-                                break;
+            if let Some(ref reader) = self.reader {
+                let mut r = reader.lock().unwrap();
+
+                // todo - Iterate over the file and remove the entry
+                // todo - later we need to find a better solution for this as its not preformat to iterate over the whole database
+                // todo - just to delete some data. Maybe we can use a linked list or something else? But for now this will do.
+                loop {
+                    match bincode::deserialize_from::<_, Entry<T>>(&mut r.get_mut()) {
+                        Ok(Entry { key: entry_key, .. }) => {
+                            if entry_key != key {
+                                new_buff.append(&mut bincode::serialize(&entry_key)?);
                             } else {
-                                return Err(e.into());
+                                // Skip this entry
+                                continue;
+                            }
+                        }
+                        Err(e) => {
+                            if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                                if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                                    // Reached the end of the serialized data
+                                    break;
+                                } else {
+                                    return Err(e.into());
+                                }
                             }
                         }
                     }
                 }
+
+                // Drop the reader so we can write to the file
+                drop(r);
             }
 
-            // Drop the reader so we can write to the file
-            drop(r);
-
-            // Write the new buffer to the file and sync it
-            let mut w: MutexGuard<'_, BufWriter<File>> = self.writer.lock().unwrap();
-            w.seek(SeekFrom::Start(0))?; // Seek to the beginning of the file
-            w.write_all(&new_buff)?;
-            w.flush()?;
-            w.get_ref().sync_all()?;
+            if let Some(ref writer) = self.writer {
+                // Write the new buffer to the file and sync it
+                let mut w = writer.lock().unwrap();
+                w.seek(SeekFrom::Start(0))?; // Seek to the beginning of the file
+                w.write_all(&new_buff)?;
+                w.flush()?;
+                w.get_ref().sync_all()?;
+            }
         }
 
         log::info!("[DELETE] Key deleted: {}", key);
@@ -282,7 +320,7 @@ where
 
     pub(crate) fn purge(&mut self) -> anyhow::Result<()>
     {
-        log::info!("[PURGE] Purging database");
+        log::debug!("[PURGE] Purging database");
 
         let mut state = self.state.lock().unwrap();
 
@@ -290,12 +328,13 @@ where
         state.expirations.clear();
 
         if self.is_disk_runtime() {
-            let mut w: MutexGuard<'_, BufWriter<File>> = self.writer.lock().unwrap();
-
-            w.seek(SeekFrom::Start(0))?; // Seek to the beginning of the file
-            w.write_all(&[])?;
-            w.flush()?;
-            w.get_ref().sync_all()?;
+            if let Some(ref writer) = self.writer {
+                let mut w = writer.lock().unwrap();
+                w.seek(SeekFrom::Start(0))?; // Seek to the beginning of the file
+                w.write_all(&[])?;
+                w.flush()?;
+                w.get_ref().sync_all()?;
+            }
         }
 
         log::info!("[PURGE] Database purged");

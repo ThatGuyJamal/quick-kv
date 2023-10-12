@@ -7,6 +7,7 @@
 		"Kian",
 		"nanos",
 		"println",
+		"Readline",
 		"rfind",
 		"rustc",
 		"Serde",
@@ -14,5 +15,8 @@
 		"tempdir",
 		"tempfile",
 		"TTLs"
+	],
+	"rust-analyzer.linkedProjects": [
+		"./Cargo.toml"
 	]
 }

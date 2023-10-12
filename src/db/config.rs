@@ -8,31 +8,31 @@ use super::runtime::{RunTime, RuntTimeType};
 
 /// The configuration for the database.
 #[derive(Debug, Clone)]
-pub struct DatabaseConfiguration
+pub(crate) struct DatabaseConfiguration
 {
     /// The path to the database file.
     ///
     /// Default: "db.qkv"
-    pub(crate) path: Option<String>,
+    pub path: Option<String>,
     /// The type of run-time to use for the database.
     ///
     /// Default: RuntTimeType::Disk
-    pub(crate) runtime: Option<RunTime>,
+    pub runtime: Option<RunTime>,
     /// If the database should log to stdout.
     ///
     /// Default: true
-    pub(crate) log: Option<bool>,
+    pub log: Option<bool>,
     /// The log level to use for the database.
     ///
     /// Default: LevelFilter::Info
-    pub(crate) log_level: Option<LevelFilter>,
+    pub log_level: Option<LevelFilter>,
     /// The default time-to-live for entries in the database.
     ///
     /// If enabled, all entries will have a ttl by default.
     /// If disabled (None), then you will have to manually set the ttl for each entry.
     ///
     /// Default: None
-    pub(crate) default_ttl: Option<Duration>,
+    pub default_ttl: Option<Duration>,
 }
 
 impl DatabaseConfiguration
@@ -96,8 +96,8 @@ impl Default for DatabaseConfiguration
         Self {
             path: Some("db.qkv".to_string()),
             runtime: Some(RunTime::new(RuntTimeType::Disk)),
-            log: Some(true),
-            log_level: None,
+            log: true.into(),
+            log_level: LevelFilter::Info.into(),
             default_ttl: None,
         }
     }

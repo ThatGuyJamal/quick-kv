@@ -27,7 +27,7 @@ where
     {
         let _config = DatabaseConfiguration::new(
             config.path,
-            Some(RunTime::new(RuntTimeType::Memory)),
+            RunTime::new(RuntTimeType::Memory).into(),
             config.log,
             config.log_level,
             config.default_ttl,

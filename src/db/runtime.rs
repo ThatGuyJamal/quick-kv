@@ -1,6 +1,6 @@
 // The different types of run-times that can be used for the database.
 // Disk will both cache and write to disk, while memory will only cache.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum RuntTimeType
 {
     Memory,
@@ -11,7 +11,7 @@ pub enum RuntTimeType
 ///
 /// This controls how the database modules will be stored,
 /// and optimized for.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RunTime
 {
     /// The type of runtime to use for the database.
@@ -31,5 +31,15 @@ impl RunTime
     pub(crate) fn get_type(&self) -> &RuntTimeType
     {
         &self._type
+    }
+}
+
+impl Default for RunTime
+{
+    fn default() -> Self
+    {
+        Self {
+            _type: RuntTimeType::Disk,
+        }
     }
 }

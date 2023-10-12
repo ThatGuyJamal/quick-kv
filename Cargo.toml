@@ -1,13 +1,12 @@
 [package]
 name = "quick-kv"
 description = "A reliable key-value storage for modern software"
-version = "0.2.5"
+version = "1.0.0"
 edition = "2021"
 repository = "https://github.com/ThatGuyJamal/quick-kv"
 documentation = "https://docs.rs/quick-kv"
-
-publish = true
 resolver = "2"
+publish = true
 
 authors = ["ThatGuyJamal <thatguyjamalbiz@gmai.com>"]
 include = ["Cargo.toml", "LICENSE", "README.md", "src/", "examples/"]
@@ -26,6 +25,7 @@ log = { version = "0.4.20" }
 anyhow = "1.0.75"
 rustc-hash = "1.1.0"
 chrono = { version = "0.4.31", features = ["serde"] }
+clap = { version = "4.4.6", features = ["derive"] }
 
 [dev-dependencies]
 tempfile = "3.8.0"
@@ -42,3 +42,7 @@ opt-level = 2
 [profile.release]
 # debug = true # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries.
+
+[[bin]]
+name = "cli"
+path = "src/bin/cli.rs"

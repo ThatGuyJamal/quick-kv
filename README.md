@@ -27,3 +27,17 @@ println!("Coming soon");
 [Documentation]: https://docs.rs/quick-kv
 [Crates.io]: https://crates.io/crates/quick-kv
 [Github]: https://github.com/ThatGuyJamal/quick-kv
+
+## CLI
+
+Quick-KV comes with a CLI REPL for interacting with the database.
+
+*Only the memory db is 
+
+To install the CLI, run the following command:
+
+```bash
+cargo install quick-kv
+```
+
+This is different from the `cargo add` command because it installs the CLI globally allowing you to use it as a executable.
