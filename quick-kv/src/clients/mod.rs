@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::time::{Duration, Instant};
-use log::LevelFilter;
 
+use log::LevelFilter;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -12,7 +12,8 @@ pub mod memory;
 pub mod normal;
 
 #[derive(Debug, Clone)]
-pub struct ClientConfig {
+pub struct ClientConfig
+{
     /// The path to the database file.
     ///
     /// Default: "db.qkv"
@@ -20,18 +21,18 @@ pub struct ClientConfig {
     /// If the database should log to stdout.
     ///
     /// Default: true
-    pub  log: Option<bool>,
+    pub log: Option<bool>,
     /// The log level to use for the database.
     ///
     /// Default: LevelFilter::Info
-    pub  log_level: Option<LevelFilter>,
+    pub log_level: Option<LevelFilter>,
     /// The default time-to-live for entries in the database.
     ///
     /// If enabled, all entries will have a ttl by default.
     /// If disabled (None), then you will have to manually set the ttl for each entry.
     ///
     /// Default: None
-    pub  default_ttl: Option<Duration>,
+    pub default_ttl: Option<Duration>,
 }
 
 pub(crate) trait BaseClient<T>
@@ -88,18 +89,18 @@ where
     /// # Examples
     /// ```rust
     /// ```
-    fn set(&mut self, key: &str, value: T, ttl: Option<Instant>) -> anyhow::Result<()>;
-    fn update(&mut self, key: &str, value: T, ttl: Option<Instant>, upsert: Option<bool>) -> anyhow::Result<()>;
+    fn set(&mut self, key: &str, value: T) -> anyhow::Result<()>;
+    fn update(&mut self, key: &str, value: T, upsert: Option<bool>) -> anyhow::Result<()>;
     fn delete(&mut self, key: &str) -> anyhow::Result<()>;
 
     fn exists(&mut self, key: &str) -> anyhow::Result<bool>;
     fn keys(&mut self) -> anyhow::Result<Option<Vec<String>>>;
     fn values(&mut self) -> anyhow::Result<Option<Vec<T>>>;
     fn len(&mut self) -> anyhow::Result<usize>;
-    fn clear(&mut self) -> anyhow::Result<()>;
+    fn purge(&mut self) -> anyhow::Result<()>;
 
     fn get_many(&mut self, keys: &[&str]) -> anyhow::Result<Option<Vec<T>>>;
-    fn set_many(&mut self, keys: &[&str], values: &[T], ttls: Option<Vec<Instant>>) -> anyhow::Result<()>;
+    fn set_many(&mut self, keys: &[&str], values: &[T]) -> anyhow::Result<()>;
     fn delete_many(&mut self, keys: &[&str]) -> anyhow::Result<()>;
-    fn update_many(&mut self, keys: &[&str], values: &[T]) -> anyhow::Result<()>;
+    fn update_many(&mut self, keys: &[&str], values: &[T], upsert: Option<bool>) -> anyhow::Result<()>;
 }

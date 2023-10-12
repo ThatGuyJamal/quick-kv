@@ -280,6 +280,29 @@ where
         Ok(())
     }
 
+    pub(crate) fn purge(&mut self) -> anyhow::Result<()>
+    {
+        log::info!("[PURGE] Purging database");
+
+        let mut state = self.state.lock().unwrap();
+
+        state.entries.clear();
+        state.expirations.clear();
+
+        if self.is_disk_runtime() {
+            let mut w: MutexGuard<'_, BufWriter<File>> = self.writer.lock().unwrap();
+
+            w.seek(SeekFrom::Start(0))?; // Seek to the beginning of the file
+            w.write_all(&[])?;
+            w.flush()?;
+            w.get_ref().sync_all()?;
+        }
+
+        log::info!("[PURGE] Database purged");
+
+        Ok(())
+    }
+
     /// Gets the current ttl if it exists.
     /// Function will also try the default ttl if configured else it will return None.
     fn get_ttl(&self, ttl: Option<Duration>) -> anyhow::Result<Option<DateTime<Utc>>>
