@@ -1,7 +1,7 @@
 # Todo
 
 - [ ] Make efficient File Read/Writer
-- [ ] Tracks key TTLs (time to live) and delete them later
+- [ ] Tracks key TTLs (time to live) and delete them later (using thread channels)
 - [ ] Use rayon for parallelism
 - [ ] Add async client support
 - [ ] Batching writes

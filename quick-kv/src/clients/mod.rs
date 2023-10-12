@@ -1,15 +1,40 @@
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::time::Instant;
+use std::time::{Duration, Instant};
+use log::LevelFilter;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use crate::db::config::DatabaseConfiguration;
 
-mod memory;
+pub mod memory;
+pub mod normal;
 
-pub(crate) trait Client<T>
+#[derive(Debug, Clone)]
+pub struct ClientConfig {
+    /// The path to the database file.
+    ///
+    /// Default: "db.qkv"
+    pub path: Option<String>,
+    /// If the database should log to stdout.
+    ///
+    /// Default: true
+    pub  log: Option<bool>,
+    /// The log level to use for the database.
+    ///
+    /// Default: LevelFilter::Info
+    pub  log_level: Option<LevelFilter>,
+    /// The default time-to-live for entries in the database.
+    ///
+    /// If enabled, all entries will have a ttl by default.
+    /// If disabled (None), then you will have to manually set the ttl for each entry.
+    ///
+    /// Default: None
+    pub  default_ttl: Option<Duration>,
+}
+
+pub(crate) trait BaseClient<T>
 where
     T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync,
 {
@@ -34,7 +59,7 @@ where
     /// *With default configuration:*
     /// ```rust
     /// ```
-    fn new(config: Option<DatabaseConfiguration>) -> Self;
+    fn new(config: ClientConfig) -> Self;
 
     /// Get the value associated with a key.
     ///
@@ -46,7 +71,7 @@ where
     /// ```
     /// Do something with the result. After Consuming the result, you
     /// must handle the `Option<T>` that is returned.
-    fn get(&mut self, key: &str) -> anyhow::Result<T>;
+    fn get(&mut self, key: &str) -> anyhow::Result<Option<T>>;
     /// Set the value associated with a key.
     ///
     /// If the key already exists, the database will attempt to overwrite the value.
@@ -68,12 +93,12 @@ where
     fn delete(&mut self, key: &str) -> anyhow::Result<()>;
 
     fn exists(&mut self, key: &str) -> anyhow::Result<bool>;
-    fn keys(&mut self) -> anyhow::Result<Vec<String>>;
-    fn values(&mut self) -> anyhow::Result<Vec<T>>;
+    fn keys(&mut self) -> anyhow::Result<Option<Vec<String>>>;
+    fn values(&mut self) -> anyhow::Result<Option<Vec<T>>>;
     fn len(&mut self) -> anyhow::Result<usize>;
     fn clear(&mut self) -> anyhow::Result<()>;
 
-    fn get_many(&mut self, keys: &[&str]) -> anyhow::Result<Vec<T>>;
+    fn get_many(&mut self, keys: &[&str]) -> anyhow::Result<Option<Vec<T>>>;
     fn set_many(&mut self, keys: &[&str], values: &[T], ttls: Option<Vec<Instant>>) -> anyhow::Result<()>;
     fn delete_many(&mut self, keys: &[&str]) -> anyhow::Result<()>;
     fn update_many(&mut self, keys: &[&str], values: &[T]) -> anyhow::Result<()>;

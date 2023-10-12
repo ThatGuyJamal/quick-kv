@@ -1,40 +1,43 @@
-use log::LevelFilter;
 use serde::Serialize;
-use std::{fmt::Debug, time::Duration};
+use std::fmt::Debug;
 use serde::de::DeserializeOwned;
 use std::hash::Hash;
 use std::time::Instant;
 use crate::clients::{BaseClient, ClientConfig};
+use crate::db::config::DatabaseConfiguration;
 
-use crate::db::{Database, config::DatabaseConfiguration, runtime::{self, RunTime, RuntTimeType}};
+use crate::db::Database;
+use crate::db::runtime::{RunTime, RuntTimeType};
 
 #[derive(Debug)]
-pub struct QuickMemoryClient<T>
+pub struct QuickClient<T>
 where
     T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,
 {
     db: Database<T>,
 }
 
-impl<T> BaseClient<T> for QuickMemoryClient<T>
+impl<T> BaseClient<T> for QuickClient<T>
 where
     T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,
 {
     fn new(config: ClientConfig) -> Self {
 
-        let _config = DatabaseConfiguration::new(config.path, Some(RunTime::new(RuntTimeType::Memory)), config.log, config.log_level, config.default_ttl).unwrap();
+        let _config = DatabaseConfiguration::new(config.path, Some(RunTime::new(RuntTimeType::Disk)), config.log, config.log_level, config.default_ttl).unwrap();
 
         let db = Database::new(_config).unwrap();
 
-        Self { 
+        Self {
             db
-         }
+        }
     }
 
     fn get(&mut self, key: &str) -> anyhow::Result<Option<T>> {
-        todo!()
-    }
-
+        match self.db.get(key.to_string()) {
+            Ok(value) => Ok(value),
+            Err(e) => Err(e)
+        }
+    } 
 
     fn set(&mut self, key: &str, value: T, ttl: Option<Instant>) -> anyhow::Result<()> {
         todo!()

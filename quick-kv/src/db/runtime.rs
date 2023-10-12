@@ -11,7 +11,7 @@ pub enum RuntTimeType
 ///
 /// This controls how the database modules will be stored,
 /// and optimized for.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RunTime
 {
     /// The type of runtime to use for the database.

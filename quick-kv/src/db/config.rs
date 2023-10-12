@@ -7,7 +7,7 @@ use log::LevelFilter;
 use super::runtime::{RunTime, RuntTimeType};
 
 /// The configuration for the database.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DatabaseConfiguration
 {
     /// The path to the database file.

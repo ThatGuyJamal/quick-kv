@@ -38,22 +38,22 @@ pub(super) enum TTLSignal
 ///
 /// Controls the state of the data-store and the background task.
 #[derive(Debug)]
-pub(crate) struct Database<'a, T>
+pub(crate) struct Database<T>
 where
     T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,
 {
     pub(super) state: Arc<Mutex<State<T>>>,
-    pub(super) config: &'a DatabaseConfiguration,
+    pub(super) config: DatabaseConfiguration,
     // pub(super) ttl_manager: mpsc::Sender<TTLSignal>,
     pub(super) writer: Arc<Mutex<BufWriter<File>>>,
     pub(super) reader: Arc<Mutex<BufReader<File>>>,
 }
 
-impl<'a, T> Database<'a, T>
+impl<T> Database<T>
 where
     T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,
 {
-    pub(crate) fn new(config: &'a DatabaseConfiguration) -> anyhow::Result<Self>
+    pub(crate) fn new(config: DatabaseConfiguration) -> anyhow::Result<Self>
     {
         if config.log.unwrap_or_default() {
             SimpleLogger::new()
@@ -81,58 +81,9 @@ where
         let output = Self {
             state: Arc::new(Mutex::new(State::new())),
             config,
-            // ttl_manager: sender,
             writer: Arc::new(Mutex::new(BufWriter::new(file_clone))),
             reader: Arc::new(Mutex::new(BufReader::new(file_clone2))),
         };
-
-        // {
-        //     let state_clone = output.state.clone();
-        //     // Spawn a background thread to manage TTL expiration.
-        //     thread::spawn(move || {
-        //         log::debug!("[Bootstrap] Starting background task");
-
-        //         let mut thread_state = state_clone.lock().unwrap();
-
-        //         loop {
-        //             let signal = receiver.recv().unwrap();
-
-        //             match signal {
-        //                 TTLSignal::Check => {
-        //                     log::debug!("[THREAD TASK] TTL check signal received, checking TTLs");
-
-        //                     // TTL check signal received, perform TTL checks here.
-        //                     // Find all keys scheduled to expire **before** now.
-        //                     let now = Utc::now();
-
-        //                     log::debug!("expirations found: {}", thread_state.expirations.len());
-
-        //                     let expired_data: Vec<(DateTime<Utc>, String)> = thread_state
-        //                         .expirations
-        //                         .iter()
-        //                         .take_while(|(expiration, _)| *expiration <= now)
-        //                         .map(|(when, key)| (when.clone(), key.clone()))
-        //                         .collect::<Vec<_>>();
-
-        //                     log::debug!("expired keys found: {}", expired_data.len());
-
-        //                     // Remove the expired keys from the state
-        //                     for (when, key) in expired_data {
-        //                         log::debug!("removing key: {}", key);
-        //                         thread_state.entries.remove(&key);
-        //                         thread_state.expirations.remove(&(when, key));
-        //                     }
-
-        //                     log::debug!("[THREAD TASK] TTL check complete");
-        //                 }
-        //                 TTLSignal::Exit => {
-        //                     log::warn!("[THREAD TASK] Received exit signal, exiting background task");
-        //                     break;
-        //                 }
-        //             }
-        //         }
-        //     });
-        // }
 
         log::info!("[Bootstrap] QuickSchemaClient Initialized!");
 
@@ -161,8 +112,6 @@ where
     pub(crate) fn set(&mut self, key: &str, value: T, ttl: Option<Duration>) -> anyhow::Result<()>
     {
         log::info!("[SET] Attempting set: {}", key);
-
-        // self.ttl_manager.send(TTLSignal::Check)?;
 
         // First check if the data already exists; if so, update it instead
         let mut state = self.state.lock().unwrap();
@@ -199,8 +148,6 @@ where
     pub(crate) fn update(&mut self, key: &str, value: T, ttl: Option<Duration>, upsert: Option<bool>) -> anyhow::Result<()>
     {
         log::info!("[UPDATE] Attempting {} update...", key);
-
-        // self.ttl_manager.send(TTLSignal::Check)?;
 
         let mut state = self.state.lock().unwrap();
 
@@ -375,7 +322,7 @@ mod tests
         let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
 
         let config = DatabaseConfiguration::new(Some(tmp_file), None, None, None, None)?;
-        let db = Database::<String>::new(&config)?;
+        let db = Database::<String>::new(config.clone())?;
 
         assert_eq!(db.config.path, config.path);
 
@@ -389,7 +336,7 @@ mod tests
         let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
 
         let config = DatabaseConfiguration::new(Some(tmp_file), None, None, None, None)?;
-        let mut db = Database::<String>::new(&config)?;
+        let mut db = Database::<String>::new(config)?;
 
         db.set("test", "test".to_string(), None)?;
 
@@ -406,7 +353,7 @@ mod tests
 
         let config = DatabaseConfiguration::new(Some(tmp_file), None, None, None, None)?;
 
-        let mut db = Database::<String>::new(&config)?;
+        let mut db = Database::<String>::new(config)?;
 
         db.set("test", "test".to_string(), None)?;
 
@@ -429,7 +376,7 @@ mod tests
 
         let config = DatabaseConfiguration::new(Some(tmp_file), None, None, None, None)?;
 
-        let mut db = Database::<String>::new(&config)?;
+        let mut db = Database::<String>::new(config)?;
 
         db.set("test", "test".to_string(), None)?;
 
@@ -443,29 +390,4 @@ mod tests
 
         Ok(())
     }
-
-    // #[test]
-    // fn test_database_ttl() -> Result<()>
-    // {
-    //     let tmp_dir = tempdir().expect("Failed to create tempdir");
-    //     let tmp_file = tmp_dir.path().join("test.qkv").to_str().unwrap().to_string();
-
-    //     let config = DatabaseConfiguration::new(Some(tmp_file), None, Some(true), Some(LevelFilter::Debug), None)?;
-
-    //     let mut db = Database::<String>::new(&config)?;
-
-    //     db.set("test", "test".to_string(), Some(Duration::from_secs(3)))?;
-
-    //     let result = db.get("test".to_string())?.unwrap();
-
-    //     assert_eq!(result, "test".to_string());
-
-    //     std::thread::sleep(Duration::from_secs(10));
-
-    //     let result = db.get("test".to_string())?;
-
-    //     assert_eq!(result, None);
-
-    //     Ok(())
-    // }
 }
