@@ -37,7 +37,7 @@ where
             Ok(value) => Ok(value),
             Err(e) => Err(e)
         }
-    } 
+    }
 
     fn set(&mut self, key: &str, value: T, ttl: Option<Instant>) -> anyhow::Result<()> {
         todo!()
