@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::time::Instant;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;

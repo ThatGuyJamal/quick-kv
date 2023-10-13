@@ -1,16 +1,14 @@
-use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::hash::Hash;
 use std::io::{self, BufReader, BufWriter, Seek, SeekFrom, Write};
-use std::sync::{mpsc, Arc, Mutex, MutexGuard};
-use std::thread;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use log::LevelFilter;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::Serialize;
 use simple_logger::SimpleLogger;
 use time::macros::format_description;
 
@@ -18,7 +16,6 @@ use self::config::DatabaseConfiguration;
 use self::runtime::RuntTimeType;
 use crate::db::entry::Entry;
 use crate::db::state::State;
-use crate::types::HashMap;
 
 pub(crate) mod batcher;
 pub(crate) mod config;
@@ -27,6 +24,7 @@ pub(super) mod runtime;
 pub(super) mod state;
 
 /// A signal sent to the background task.
+#[allow(dead_code)]
 #[derive(Debug)]
 pub(super) enum TTLSignal
 {
@@ -370,10 +368,11 @@ where
         }
     }
 
-    fn load_db_into_cache(&mut self) -> anyhow::Result<()> {
+    fn load_db_into_cache(&mut self) -> anyhow::Result<()>
+    {
         if let Some(ref reader) = self.reader {
             let mut cached_count = 0;
-            
+
             let mut r = reader.lock().unwrap();
 
             r.seek(SeekFrom::Start(0))?; // Seek to the beginning of the file
@@ -465,6 +464,8 @@ mod tests
 
         let result = db.get("test".to_string())?.unwrap();
 
+        assert_eq!(result, "test".to_string());
+
         db.update("test", "test2".to_string(), None, None)?;
 
         let result = db.get("test".to_string())?.unwrap();
@@ -487,6 +488,8 @@ mod tests
         db.set("test", "test".to_string(), None)?;
 
         let result = db.get("test".to_string())?.unwrap();
+
+        assert_eq!(result, "test".to_string());
 
         db.delete("test")?;
 

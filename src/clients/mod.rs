@@ -1,12 +1,10 @@
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use log::LevelFilter;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-
-use crate::db::config::DatabaseConfiguration;
 
 pub mod memory;
 pub mod normal;
@@ -37,7 +35,7 @@ pub struct ClientConfig
 
 impl ClientConfig
 {
-    pub fn new(path:String, log: Option<bool>, log_level: Option<LevelFilter>) -> Self
+    pub fn new(path: String, log: Option<bool>, log_level: Option<LevelFilter>) -> Self
     {
         Self {
             path: Some(path),
@@ -53,7 +51,7 @@ impl Default for ClientConfig
     fn default() -> Self
     {
         Self {
-            path: "cli.qkv".to_string().into(),
+            path: "db.qkv".to_string().into(),
             log: true.into(),
             log_level: LevelFilter::Info.into(),
             default_ttl: None,
@@ -81,10 +79,24 @@ where
     /// - `Hash`
     /// - `Send`
     /// - `Sync`
+    /// - `Clone`
     ///
     /// # Examples
     /// *With default configuration:*
     /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
     /// ```
     fn new(config: ClientConfig) -> Self;
 
@@ -95,6 +107,25 @@ where
     ///
     /// # Examples
     /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// }
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// client.set("user_1", Schema { id: 10 }).unwrap();
+    ///
+    /// let user = client.get("user_1").unwrap();
+    ///
+    /// // do something with the user
     /// ```
     /// Do something with the result. After Consuming the result, you
     /// must handle the `Option<T>` that is returned.
@@ -114,19 +145,274 @@ where
     ///
     /// # Examples
     /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// client.set("user_1", Schema { id: 10 }).unwrap();
     /// ```
     fn set(&mut self, key: &str, value: T) -> anyhow::Result<()>;
+    /// Update the value associated with a key.
+    ///
+    /// By default update will fail if the key does not exist. If you want to upsert the value, then
+    /// you can set `upsert` to `true` using `true.into()` or `Some(true)`.
+    ///
+    /// `key` to update the value for.
+    ///
+    /// `value` to update for the key.
+    ///
+    /// `upsert` if the value should be upserted if the key does not exist.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// client.update("user_1", Schema { id: 10 }, None).unwrap(); // fails
+    /// client
+    ///     .update("user_1", Schema { id: 20 }, true.into())
+    ///     .unwrap(); // succeeds
+    /// ```
     fn update(&mut self, key: &str, value: T, upsert: Option<bool>) -> anyhow::Result<()>;
+
+    /// Delete the value associated with a key.
+    ///
+    /// `key` to delete the value for.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// client.delete("user_1").unwrap();
+    /// ```
     fn delete(&mut self, key: &str) -> anyhow::Result<()>;
-
+    /// Check if a key exists in the database.
+    ///
+    /// `key` to check if it exists.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// if client.exists("user_1").unwrap() {
+    ///     // do something
+    /// }
+    /// ```
     fn exists(&mut self, key: &str) -> anyhow::Result<bool>;
+    /// Get all keys in the database.
+    ///
+    /// Returns `None` if there are no keys in the database or a `Vec<String>` keys.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// let all_keys = client.keys().unwrap();
+    /// ```
     fn keys(&mut self) -> anyhow::Result<Option<Vec<String>>>;
+    /// Get all values in the database.
+    ///
+    /// Returns `None` if there are no values in the database or a `Vec<T>` values.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// let all_values = client.values().unwrap();
+    /// ```
     fn values(&mut self) -> anyhow::Result<Option<Vec<T>>>;
+    /// Get the number of keys in the database.
+    ///
+    /// Returns `0` if there are no keys in the database or the number of keys in the database.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// let num_keys = client.len().unwrap();
+    /// ```
     fn len(&mut self) -> anyhow::Result<usize>;
+    /// Clears all keys and values from the database.
+    /// # Examples
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// client.purge().unwrap();
+    /// ```
     fn purge(&mut self) -> anyhow::Result<()>;
-
+    /// Get multiple values associated with multiple keys.
+    /// # Examples
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// let values = client.get_many(&["user_1", "user_2"]).unwrap();
+    /// ```
     fn get_many(&mut self, keys: &[&str]) -> anyhow::Result<Option<Vec<T>>>;
+    /// Set multiple values associated with multiple keys.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// client
+    ///     .set_many(
+    ///         &["user_1", "user_2"],
+    ///         &[Schema { id: 10 }, Schema { id: 20 }],
+    ///     )
+    ///     .unwrap();
+    /// ```
     fn set_many(&mut self, keys: &[&str], values: &[T]) -> anyhow::Result<()>;
+    /// Delete multiple values associated with multiple keys.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema
+    /// {
+    ///     id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new(
+    ///     "db.qkv".to_string(),
+    ///     true.into(),
+    ///     LevelFilter::Debug.into(),
+    /// ));
+    ///
+    /// client.delete_many(&["user_1", "user_2"]).unwrap();
+    /// ```
     fn delete_many(&mut self, keys: &[&str]) -> anyhow::Result<()>;
+    /// Update multiple values associated with multiple keys.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use quick_kv::prelude::*;
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// struct Schema {
+    ///  id: u64,
+    /// };
+    ///
+    /// let mut client = QuickClient::<Schema>::new(ClientConfig::new("db.qkv".to_string(), true.into(), LevelFilter::Debug.into()));
+    ///
+    /// client.update_many(&["user_1", "user_2"], &[Schema { id: 10 }, Schema { id: 20 }], true.into()).unwrap();
     fn update_many(&mut self, keys: &[&str], values: &[T], upsert: Option<bool>) -> anyhow::Result<()>;
 }

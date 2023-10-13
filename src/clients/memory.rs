@@ -1,14 +1,12 @@
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::time::{Duration, Instant};
 
-use log::LevelFilter;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 use crate::clients::{BaseClient, ClientConfig};
 use crate::db::config::DatabaseConfiguration;
-use crate::db::runtime::{self, RunTime, RuntTimeType};
+use crate::db::runtime::{RunTime, RuntTimeType};
 use crate::db::Database;
 
 #[derive(Debug)]

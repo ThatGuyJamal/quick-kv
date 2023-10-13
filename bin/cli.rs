@@ -1,7 +1,8 @@
+use std::io::{self, Write};
+
 use clap::{arg, Command};
 use log::LevelFilter;
 use quick_kv::prelude::*;
-use std::io::{self, Write};
 
 const START_MESSAGE: &str = r#"
 Welcome to the Quick-KV REPL!
@@ -9,7 +10,8 @@ Welcome to the Quick-KV REPL!
 Run 'qkv help' to see the list of commands.
 "#;
 
-fn cli() -> Command {
+fn cli() -> Command
+{
     Command::new("Quick-KV REPL")
         .name("qkv")
         .about("REPL for interacting with Quick-KV")
@@ -44,15 +46,19 @@ fn cli() -> Command {
                 .arg(arg!(<VALUE> "New value to set for the key"))
                 .arg_required_else_help(true),
         )
-    .subcommand(Command::new("keys").about("Lists all keys in the database"))
+        .subcommand(Command::new("keys").about("Lists all keys in the database"))
         .subcommand(Command::new("exit").about("Exits the repl"))
     // .subcommand(Command::new("").about(""))
 }
 
-
 // todo - fix bug where if you type incorrect commands then the repl crashes.
-fn main() -> anyhow::Result<()> {
-    let client = QuickClient::<String>::new(ClientConfig::new("cli.qkv".to_string(), true.into(), LevelFilter::Debug.into()));
+fn main() -> anyhow::Result<()>
+{
+    let client = QuickClient::<String>::new(ClientConfig::new(
+        "cli.qkv".to_string(),
+        true.into(),
+        LevelFilter::Debug.into(),
+    ));
 
     println!("{}", START_MESSAGE);
 
@@ -75,33 +81,36 @@ fn main() -> anyhow::Result<()> {
         match input {
             "exit" => {
                 println!("Exiting repl...");
-                break
-            },
+                break;
+            }
             _ => {
                 let matches = cli().get_matches_from(input.split_whitespace().collect::<Vec<_>>());
 
                 match matches.subcommand() {
-                    Some(("version", _)) => {println!("Quick-KV CLI v{}", env!("CARGO_PKG_VERSION")); command_recognized = true; },
+                    Some(("version", _)) => {
+                        println!("Quick-KV CLI v{}", env!("CARGO_PKG_VERSION"));
+                        command_recognized = true;
+                    }
                     Some(("get", args)) => {
                         let key: &String = args.get_one::<String>("KEY").expect("Key not provided?");
-                        get(client.clone(), &key)?;
+                        get(client.clone(), key)?;
                         command_recognized = true;
                     }
                     Some(("set", args)) => {
                         let key = args.get_one::<String>("KEY").expect("Key not provided?");
                         let value = args.get_one::<String>("VALUE").expect("Value not provided?");
-                        set(client.clone(), &key, value.to_string())?;
+                        set(client.clone(), key, value.to_string())?;
                         command_recognized = true;
                     }
                     Some(("delete", args)) => {
-                        let key= args.get_one::<String>("KEY").expect("Key not provided?");
-                        delete(client.clone(), &key)?;
+                        let key = args.get_one::<String>("KEY").expect("Key not provided?");
+                        delete(client.clone(), key)?;
                         command_recognized = true;
                     }
                     Some(("update", args)) => {
                         let key = args.get_one::<String>("KEY").expect("Key not provided?");
                         let value = args.get_one::<String>("VALUE").expect("Value not provided?");
-                        update(client.clone(), &key, value.to_string())?;
+                        update(client.clone(), key, value.to_string())?;
                         command_recognized = true;
                     }
                     Some(("keys", _)) => {
@@ -121,7 +130,8 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn get(mut client: QuickClient<String>, key: &str) -> anyhow::Result<()> {
+fn get(mut client: QuickClient<String>, key: &str) -> anyhow::Result<()>
+{
     let result = client.get(key)?;
 
     if let Some(value) = result {
@@ -133,7 +143,8 @@ fn get(mut client: QuickClient<String>, key: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn set(mut client: QuickClient<String>, key: &str, value: String) -> anyhow::Result<()> {
+fn set(mut client: QuickClient<String>, key: &str, value: String) -> anyhow::Result<()>
+{
     client.set(key, value.clone())?;
 
     std::thread::sleep(std::time::Duration::from_secs(5));
@@ -142,21 +153,24 @@ fn set(mut client: QuickClient<String>, key: &str, value: String) -> anyhow::Res
     Ok(())
 }
 
-fn update(mut client: QuickClient<String>, key: &str, value: String) -> anyhow::Result<()> {
+fn update(mut client: QuickClient<String>, key: &str, value: String) -> anyhow::Result<()>
+{
     client.update(key, value.to_owned(), None)?;
 
     println!("Updated \"{}\"", key);
     Ok(())
 }
 
-fn delete(mut client: QuickClient<String>, key: &str) -> anyhow::Result<()> {
+fn delete(mut client: QuickClient<String>, key: &str) -> anyhow::Result<()>
+{
     client.delete(key)?;
 
     println!("Deleted \"{}\"", key);
     Ok(())
 }
 
-fn keys(mut client: QuickClient<String>) -> anyhow::Result<()> {
+fn keys(mut client: QuickClient<String>) -> anyhow::Result<()>
+{
     let keys = client.keys()?;
 
     println!("Keys: {:?}", keys);

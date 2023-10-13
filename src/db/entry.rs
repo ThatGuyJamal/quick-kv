@@ -1,12 +1,9 @@
-use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::hash::Hash;
 
 use chrono::{DateTime, Utc};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
-
-use crate::types::HashMap;
 
 /// Entry in the key-value store
 #[derive(Debug, Serialize, Clone)]

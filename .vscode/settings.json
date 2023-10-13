@@ -15,7 +15,8 @@
 		"subsec",
 		"tempdir",
 		"tempfile",
-		"TTLs"
+		"TTLs",
+		"upserted"
 	],
 	"rust-analyzer.linkedProjects": [
 		"./Cargo.toml"

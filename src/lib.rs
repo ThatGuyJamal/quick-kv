@@ -1,32 +1,32 @@
-#![allow(dead_code)] // todo: remove this
-#![allow(unused_imports)] // todo: remove this
-#![allow(unused_variables)] // todo: remove this
-
-//! QuickKV is a offline key-value database designed to be thread safe, fast, and easy to use.
+//! QuickKV is a simple, fast, and easy to use key-value store.
 //!
 //! # Features
 //!
-//! - todo
+//! - Simple API
+//! - Built-in Logging
+//! - I/O Caching
+//! - CLI tool (Beta)
 //!
 //! ## Useful Links
-//
-// [Documentation] | [Crates.io] | [Github]
 //!
-//! # Why use QuickKV?
+//! [Documentation] | [Crates.io] | [Github]
 //!
-//! todo
+//! ## Examples
 //!
 //! Examples can be found in the [examples] directory.
 //!
-//! [examples]: https://github.com/ThatGuyJamal/quick-kv/tree/master/core/examples
+//! [examples]: https://github.com/ThatGuyJamal/quick-kv/tree/master/examples
 //!
 //! [Documentation]: https://docs.rs/quick-kv
 //! [Crates.io]: https://crates.io/crates/quick-kv
 //! [Github]: https://github.com/ThatGuyJamal/quick-kv
 
+#![allow(clippy::len_without_is_empty)]
+#![allow(ambiguous_glob_reexports)]
+
+pub mod clients;
 pub mod prelude;
 
-mod clients;
 mod db;
 mod types;
 mod utils;

@@ -1,12 +1,14 @@
 #!/usr/bin/env sh
 
-# Makes sure no db files exist before running all the test.
-if [ -f "db.qkv" ]; then
-  rm db.qkv
+# Makes sure no files with .qkv extension exist before running all the tests.
+if [ -n "$(find . -maxdepth 1 -name '*.qkv' -print -quit)" ]; then
+  find . -maxdepth 1 -name '*.qkv' -type f -delete
 fi
 
-cargo test --features full
+# Run your tests here
+cargo test --doc --all
 
-if [ -f "db.qkv" ]; then
-  rm db.qkv
+# Deletes any remaining .qkv files after the tests.
+if [ -n "$(find . -maxdepth 1 -name '*.qkv' -print -quit)" ]; then
+  find . -maxdepth 1 -name '*.qkv' -type f -delete
 fi

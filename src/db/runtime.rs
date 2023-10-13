@@ -28,6 +28,7 @@ impl RunTime
     }
 
     /// Get the type of run-time.
+    #[allow(dead_code)]
     pub(crate) fn get_type(&self) -> &RuntTimeType
     {
         &self._type

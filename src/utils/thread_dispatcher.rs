@@ -1,4 +1,4 @@
-use std::thread::{available_parallelism, scope};
+#![allow(dead_code)]
 
 type Task = fn();
 

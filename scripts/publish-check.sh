@@ -9,9 +9,9 @@ fi
 # If not formatted, some cargo commands will fail, this is just a safely check
 ./scripts/fmt-project.sh
 
-# Makes sure no db files exist before running all the test.
-if [ -f "db.qkv" ]; then
-  rm db.qkv
+# Makes sure no db files exist before running the test.
+if [ -n "$(find . -maxdepth 1 -name '*.qkv' -print -quit)" ]; then
+  find . -maxdepth 1 -name '*.qkv' -type f -delete
 fi
 
 # Check if cargo fmt reports any formatting issues
@@ -32,6 +32,11 @@ if ! cargo doc --no-deps --all --release; then
   exit 1
 fi
 
+# Makes sure no db files exist before running the test.
+if [ -n "$(find . -maxdepth 1 -name '*.qkv' -print -quit)" ]; then
+  find . -maxdepth 1 -name '*.qkv' -type f -delete
+fi
+
 # Check if all doc tests pass
 if ! cargo test --doc --all; then
   echo "Error: Some documentation tests failed. Please ensure doc comments are correct."
@@ -44,8 +49,9 @@ if ! cargo publish --dry-run --allow-dirty; then
   exit 1
 fi
 
-if [ -f "db.qkv" ]; then
-  rm db.qkv
+# Makes sure no db files exist before running the test.
+if [ -n "$(find . -maxdepth 1 -name '*.qkv' -print -quit)" ]; then
+  find . -maxdepth 1 -name '*.qkv' -type f -delete
 fi
 
 echo "Everything looks good! You can proceed with 'cargo publish' to publish your crate."
