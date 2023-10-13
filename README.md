@@ -21,18 +21,25 @@ cargo add quick-kv
 ## Examples
 
 ```rust
-println!("Coming soon");
+use quick_kv::prelude::*;
+
+fn main() -> anyhow::Result<()>
+{
+    let mut client = QuickClient::<String>::new(None);
+
+    client.get("star this repo")?;
+
+    Ok(())
+}
 ```
 
 [Documentation]: https://docs.rs/quick-kv
 [Crates.io]: https://crates.io/crates/quick-kv
 [Github]: https://github.com/ThatGuyJamal/quick-kv
 
-## CLI
+## CLI (Beta)
 
-Quick-KV comes with a CLI REPL for interacting with the database.
-
-*Only the memory db is 
+Quick-KV comes with a REPL for interacting with the database.
 
 To install the CLI, run the following command:
 
