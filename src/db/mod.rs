@@ -37,7 +37,7 @@ pub(super) enum TTLSignal
 /// The database consumed by clients.
 ///
 /// Controls the state of the data-store and the background task.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Database<T>
 where
     T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,
@@ -114,7 +114,7 @@ where
             },
         };
 
-        log::info!("[Bootstrap] QuickSchemaClient Initialized!");
+        log::info!("[Bootstrap] QuickKVClient Initialized!");
 
         Ok(output)
     }

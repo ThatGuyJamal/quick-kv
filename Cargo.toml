@@ -45,4 +45,4 @@ panic = "abort" # This leads to better optimizations and smaller binaries.
 
 [[bin]]
 name = "cli"
-path = "src/bin/cli.rs"
+path = "./bin/cli.rs"

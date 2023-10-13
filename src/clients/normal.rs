@@ -10,7 +10,7 @@ use crate::db::config::DatabaseConfiguration;
 use crate::db::runtime::{RunTime, RuntTimeType};
 use crate::db::Database;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct QuickClient<T>
 where
     T: Serialize + DeserializeOwned + Debug + Eq + PartialEq + Hash + Send + Sync + Clone + 'static,

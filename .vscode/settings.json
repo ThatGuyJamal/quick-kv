@@ -8,6 +8,7 @@
 		"nanos",
 		"println",
 		"Readline",
+		"reedline",
 		"rfind",
 		"rustc",
 		"Serde",
