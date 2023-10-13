@@ -35,6 +35,19 @@ pub struct ClientConfig
     pub default_ttl: Option<Duration>,
 }
 
+impl ClientConfig
+{
+    pub fn new(path:String, log: Option<bool>, log_level: Option<LevelFilter>) -> Self
+    {
+        Self {
+            path: Some(path),
+            log,
+            log_level,
+            default_ttl: None,
+        }
+    }
+}
+
 impl Default for ClientConfig
 {
     fn default() -> Self

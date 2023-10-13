@@ -73,7 +73,7 @@ where
             .map(|rt| rt._type == RuntTimeType::Disk)
             .unwrap_or(false)
         {
-            log::info!("[Bootstrap] Database file created or opened!");
+            log::debug!("[Bootstrap] Database file created or opened!");
             Some(
                 OpenOptions::new()
                     .read(true)
@@ -87,7 +87,7 @@ where
 
         // let (sender, receiver) = mpsc::channel::<TTLSignal>();
 
-        let output = Self {
+        let mut output = Self {
             state: Arc::new(Mutex::new(State::new())),
             config: config_clone.clone(),
             writer: if config_clone
@@ -113,6 +113,8 @@ where
                 None
             },
         };
+
+        output.load_db_into_cache()?;
 
         log::info!("[Bootstrap] QuickKVClient Initialized!");
 
@@ -366,6 +368,48 @@ where
         } else {
             true
         }
+    }
+
+    fn load_db_into_cache(&mut self) -> anyhow::Result<()> {
+        if let Some(ref reader) = self.reader {
+            let mut cached_count = 0;
+            
+            let mut r = reader.lock().unwrap();
+
+            r.seek(SeekFrom::Start(0))?; // Seek to the beginning of the file
+
+            loop {
+                match bincode::deserialize_from::<_, Entry<T>>(&mut r.get_mut()) {
+                    Ok(entry) => {
+                        let mut state = self.state.lock().unwrap();
+
+                        state.entries.insert(entry.key.clone(), entry.clone());
+
+                        if let Some(expires_at) = entry.expires_at {
+                            state.expirations.insert((expires_at, entry.key.clone()));
+                        }
+
+                        cached_count += 1;
+                    }
+                    Err(e) => {
+                        if let bincode::ErrorKind::Io(io_err) = e.as_ref() {
+                            if io_err.kind() == io::ErrorKind::UnexpectedEof {
+                                // Reached the end of the serialized data
+                                break;
+                            } else {
+                                return Err(e.into());
+                            }
+                        }
+                    }
+                }
+            }
+
+            drop(r);
+
+            log::debug!("[Bootstrap] Loaded {} entries into cache", cached_count);
+        }
+
+        Ok(())
     }
 }
 

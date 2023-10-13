@@ -1,10 +1,11 @@
 # Todo
 
-- [ ] Make efficient File Read/Writer
-- [ ] Tracks key TTLs (time to live) and delete them later (using thread channels)
+- [x] Make efficient File Read/Writer
+- [x] Before database is initialized, read the current database file and load it into memory before accepting new data so we keep synced data within cache.
 - [ ] Use rayon for parallelism
-- [ ] Add async client support
 - [ ] Batching writes
+- [ ] Tracks key TTLs (time to live) and delete them later (using thread channels)
+- [ ] Add async client support
 
 ## Todo Notes
 

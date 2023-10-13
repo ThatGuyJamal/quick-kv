@@ -1,4 +1,5 @@
 use clap::{arg, Command};
+use log::LevelFilter;
 use quick_kv::prelude::*;
 use std::io::{self, Write};
 
@@ -43,12 +44,15 @@ fn cli() -> Command {
                 .arg(arg!(<VALUE> "New value to set for the key"))
                 .arg_required_else_help(true),
         )
+    .subcommand(Command::new("keys").about("Lists all keys in the database"))
         .subcommand(Command::new("exit").about("Exits the repl"))
     // .subcommand(Command::new("").about(""))
 }
 
+
+// todo - fix bug where if you type incorrect commands then the repl crashes.
 fn main() -> anyhow::Result<()> {
-    let client = QuickClient::<String>::new(ClientConfig::default());
+    let client = QuickClient::<String>::new(ClientConfig::new("cli.qkv".to_string(), true.into(), LevelFilter::Debug.into()));
 
     println!("{}", START_MESSAGE);
 
@@ -100,6 +104,10 @@ fn main() -> anyhow::Result<()> {
                         update(client.clone(), &key, value.to_string())?;
                         command_recognized = true;
                     }
+                    Some(("keys", _)) => {
+                        keys(client.clone())?;
+                        command_recognized = true;
+                    }
                     _ => println!("Unknown command. Type 'exit' to quit."),
                 }
 
@@ -145,5 +153,12 @@ fn delete(mut client: QuickClient<String>, key: &str) -> anyhow::Result<()> {
     client.delete(key)?;
 
     println!("Deleted \"{}\"", key);
+    Ok(())
+}
+
+fn keys(mut client: QuickClient<String>) -> anyhow::Result<()> {
+    let keys = client.keys()?;
+
+    println!("Keys: {:?}", keys);
     Ok(())
 }
