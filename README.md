@@ -1,6 +1,6 @@
 # Quick-KV
 
-A Fast Key Value Database in rust.
+A reliable key-value storage for modern software
 
 ## Features
 
@@ -15,76 +15,29 @@ A Fast Key Value Database in rust.
 ## Installation
 
 ```bash
-cargo add quick-kv --features full
+cargo add quick-kv
 ```
 
-## Usage
+## Examples
 
-*The examples below require the `full` feature to be enabled.*
 ```rust
-use std::path::PathBuf;
-
-use quick_kv::prelude::*;
-use serde::{Deserialize, Serialize};
-
-fn main()
-{
-    let config = QuickConfiguration {
-        path: Some(PathBuf::from("db.qkv")),
-        logs: true,
-        log_level: Some(LevelFilter::Debug),
-    };
-
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-    struct Books
-    {
-        title: String,
-        description: String,
-        pages: u32,
-    }
-
-    let mut client = QuickClient::<Books>::new(Some(config)).unwrap();
-
-    let books = vec![
-        Books {
-            title: "The Hobbit".to_string(),
-            description: "A book about a hobbit".to_string(),
-            pages: 300,
-        },
-        Books {
-            title: "The Lord of the Rings".to_string(),
-            description: "A book about a ring".to_string(),
-            pages: 500,
-        },
-        Books {
-            title: "The Evil Kind".to_string(),
-            description: "A book about an evil king".to_string(),
-            pages: 200,
-        },
-    ];
-
-    let mut data = Vec::new();
-
-    for i in 0..books.len() {
-        data.push(BinaryKv {
-            key: i.to_string(),
-            value: books[i].clone(),
-        });
-    }
-
-    client.set_many(data).unwrap();
-
-    let results = client
-        .get_many(vec!["0".to_string(), "1".to_string(), "2".to_string()])
-        .unwrap();
-
-    for i in 0..results.len() {
-        println!("Found book: {:?}", results[i].value.title)
-    }
-
-    assert_eq!(results.len(), books.len());
-}
+println!("Coming soon");
 ```
+
 [Documentation]: https://docs.rs/quick-kv
 [Crates.io]: https://crates.io/crates/quick-kv
 [Github]: https://github.com/ThatGuyJamal/quick-kv
+
+## CLI
+
+Quick-KV comes with a CLI REPL for interacting with the database.
+
+*Only the memory db is 
+
+To install the CLI, run the following command:
+
+```bash
+cargo install quick-kv
+```
+
+This is different from the `cargo add` command because it installs the CLI globally allowing you to use it as a executable.
