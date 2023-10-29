@@ -52,6 +52,7 @@ fn cli() -> Command
 }
 
 // todo - fix bug where if you type incorrect commands then the repl crashes.
+// todo - make a config file where users can define the type of data the database will store.
 fn main() -> anyhow::Result<()>
 {
     let client = QuickClient::<String>::new(ClientConfig::new(
