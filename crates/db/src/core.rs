@@ -215,7 +215,7 @@ impl Shared {
         // returns a `MutexGuard` and not a `&mut State`. The borrow checker is
         // not able to see "through" the mutex guard and determine that it is
         // safe to access both `state.expirations` and `state.entries` mutably,
-        // so we get a "real" mutable reference to `State` outside of the loop.
+        // so we get a "real" mutable reference to `State` outside the loop.
         let state = &mut *state;
 
         // Find all keys scheduled to expire **before** now.

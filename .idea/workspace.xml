@@ -8,42 +8,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fcb3d4ff-bb48-4ef2-8b6b-4ceee48bb02a" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/crates/common/Cargo.toml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/common/src/lib.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/db/Cargo.toml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/db/src/core.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/db/src/lib.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/quick-kv/Cargo.toml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/quick-kv/src/main.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/server/Cargo.toml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/crates/server/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/discord.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/quick-kv.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/quick-kv.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vscode/settings.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/cli.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/guessing_game.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/memory.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/test-examples.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/clients/memory.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/clients/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/clients/normal.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/db/batcher.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/db/config.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/db/entry.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/db/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/db/runtime.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/db/state.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/prelude.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/mod.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/thread_dispatcher.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/db/src/core.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/db/src/core.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -147,7 +112,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1713566140400</updated>
-      <workItem from="1713566142367" duration="2729000" />
+      <workItem from="1713566142367" duration="3494000" />
     </task>
     <servers />
   </component>
