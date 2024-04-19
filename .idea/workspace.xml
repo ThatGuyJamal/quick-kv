@@ -1,69 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="AutoImportSettings">
-    <option name="autoReloadType" value="SELECTIVE" />
+    <option name="autoReloadType" value="ALL" />
   </component>
   <component name="CargoProjects">
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="38d17ab0-d4d0-46d9-9a3f-f692e4cf9c34" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
+    <list default="true" id="fcb3d4ff-bb48-4ef2-8b6b-4ceee48bb02a" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/crates/common/Cargo.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/common/src/lib.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/db/Cargo.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/db/src/core.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/db/src/lib.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/quick-kv/Cargo.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/quick-kv/src/main.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/server/Cargo.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/server/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/discord.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/quick-kv.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/quick-kv.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rustfmt.toml" beforeDir="false" afterPath="$PROJECT_DIR$/rustfmt.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/fmt-project.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/fmt-project.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/publish-check.sh" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/publish-check.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.vscode/settings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/cli.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/guessing_game.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/memory.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/test-examples.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/clients/memory.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/clients/mod.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/clients/normal.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/db/batcher.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/db/config.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/db/entry.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/db/mod.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/db/runtime.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/db/state.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/prelude.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/mod.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/thread_dispatcher.rs" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Rust File" />
+      </list>
+    </option>
+  </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="MacroExpansionManager">
-    <option name="directoryName" value="avijnm0l" />
+    <option name="directoryName" value="wo7wrao9" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
-  <component name="ProjectColorInfo">{
-  &quot;associatedIndex&quot;: 4
-}</component>
-  <component name="ProjectId" id="2WbLv4J60SlM2tF4erdaQrxqH4v" />
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 4
+}]]></component>
+  <component name="ProjectId" id="2fL2fNLq83PKU3QwaM6McRTcHEl" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Cargo.Run quick-kv.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "v1.0.0",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "//wsl$/Ubuntu/home/thatguyjamal/code/projects/quick-kv/quick-kv",
+    "RunOnceActivity.rust.reset.selective.auto.import": "true",
+    "git-widget-placeholder": "rewrite",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
-    "settings.editor.selected.configurable": "preferences.lookFeel",
+    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
+    "org.rust.first.attach.projects": "true",
+    "settings.editor.selected.configurable": "language.rust.cargo.check",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
   <component name="RsExternalLinterProjectSettings">
     <option name="runOnTheFly" value="true" />
   </component>
-  <component name="RunManager" selected="Cargo.Test db::tests::test_database_delete">
-    <configuration name="Test db::tests::test_database_delete" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
-      <option name="command" value="test --package quick-kv --lib db::tests::test_database_delete -- --exact" />
+  <component name="RunManager" selected="Cargo.Run quick-kv">
+    <configuration name="Run quick-kv" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+      <option name="command" value="run --package quick-kv --bin quick-kv" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
       <option name="emulateTerminal" value="true" />
       <option name="channel" value="DEFAULT" />
       <option name="requiredFeatures" value="true" />
@@ -71,16 +112,16 @@
       <option name="withSudo" value="false" />
       <option name="buildTarget" value="REMOTE" />
       <option name="backtrace" value="SHORT" />
-      <envs />
       <option name="isRedirectInput" value="false" />
       <option name="redirectInputPath" value="" />
       <method v="2">
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Test db::tests::test_database_get_set" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
-      <option name="command" value="test --package quick-kv --lib db::tests::test_database_get_set -- --exact" />
+    <configuration name="Test quick-kv" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+      <option name="command" value="test --workspace" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
       <option name="emulateTerminal" value="true" />
       <option name="channel" value="DEFAULT" />
       <option name="requiredFeatures" value="true" />
@@ -88,98 +129,29 @@
       <option name="withSudo" value="false" />
       <option name="buildTarget" value="REMOTE" />
       <option name="backtrace" value="SHORT" />
-      <envs />
       <option name="isRedirectInput" value="false" />
       <option name="redirectInputPath" value="" />
       <method v="2">
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Test db::tests::test_database_new" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
-      <option name="command" value="test --package quick-kv --lib db::tests::test_database_new -- --exact" />
-      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
-      <option name="emulateTerminal" value="true" />
-      <option name="channel" value="DEFAULT" />
-      <option name="requiredFeatures" value="true" />
-      <option name="allFeatures" value="false" />
-      <option name="withSudo" value="false" />
-      <option name="buildTarget" value="REMOTE" />
-      <option name="backtrace" value="SHORT" />
-      <envs />
-      <option name="isRedirectInput" value="false" />
-      <option name="redirectInputPath" value="" />
-      <method v="2">
-        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="Test db::tests::test_database_ttl" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
-      <option name="command" value="test --package quick-kv --lib db::tests::test_database_ttl -- --exact" />
-      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
-      <option name="emulateTerminal" value="true" />
-      <option name="channel" value="DEFAULT" />
-      <option name="requiredFeatures" value="true" />
-      <option name="allFeatures" value="false" />
-      <option name="withSudo" value="false" />
-      <option name="buildTarget" value="REMOTE" />
-      <option name="backtrace" value="SHORT" />
-      <envs />
-      <option name="isRedirectInput" value="false" />
-      <option name="redirectInputPath" value="" />
-      <method v="2">
-        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="Test db::tests::test_database_update" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
-      <option name="command" value="test --package quick-kv --lib db::tests::test_database_update -- --exact" />
-      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
-      <option name="emulateTerminal" value="true" />
-      <option name="channel" value="DEFAULT" />
-      <option name="requiredFeatures" value="true" />
-      <option name="allFeatures" value="false" />
-      <option name="withSudo" value="false" />
-      <option name="buildTarget" value="REMOTE" />
-      <option name="backtrace" value="SHORT" />
-      <envs />
-      <option name="isRedirectInput" value="false" />
-      <option name="redirectInputPath" value="" />
-      <method v="2">
-        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-      </method>
-    </configuration>
-    <recent_temporary>
-      <list>
-        <item itemvalue="Cargo.Test db::tests::test_database_delete" />
-        <item itemvalue="Cargo.Test db::tests::test_database_ttl" />
-        <item itemvalue="Cargo.Test db::tests::test_database_update" />
-        <item itemvalue="Cargo.Test db::tests::test_database_get_set" />
-        <item itemvalue="Cargo.Test db::tests::test_database_new" />
-      </list>
-    </recent_temporary>
   </component>
   <component name="RustProjectSettings">
-    <option name="toolchainHomeDirectory" value="$PROJECT_DIR$/../../../../.cargo/bin" />
+    <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="38d17ab0-d4d0-46d9-9a3f-f692e4cf9c34" name="Changes" comment="" />
-      <created>1696996559336</created>
+      <changelist id="fcb3d4ff-bb48-4ef2-8b6b-4ceee48bb02a" name="Changes" comment="" />
+      <created>1713566140400</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1696996559336</updated>
-      <workItem from="1696996560549" duration="2810000" />
-      <workItem from="1696999400482" duration="9000" />
-      <workItem from="1696999431446" duration="2231000" />
-      <workItem from="1697049380616" duration="2529000" />
-      <workItem from="1697074710407" duration="2763000" />
+      <updated>1713566140400</updated>
+      <workItem from="1713566142367" duration="2729000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
-  </component>
-  <component name="XSLT-Support.FileAssociations.UIState">
-    <expand />
-    <select />
   </component>
 </project>

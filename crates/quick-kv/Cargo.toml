@@ -1,0 +1,31 @@
+[package]
+name = "quick-kv"
+description = "A reliable key-value storage for modern software"
+version = "2.0.0"
+edition = "2021"
+repository = "https://github.com/ThatGuyJamal/quick-kv"
+documentation = "https://docs.rs/quick-kv"
+publish = false
+
+authors = ["ThatGuyJamal <thatguyjamalbiz@gmai.com>"]
+include = ["Cargo.toml", "LICENSE", "./../../README.md", "src/", "examples/", "bin/"]
+readme = "./../../README.md"
+
+categories = ["database", "caching"]
+license = "MIT"
+
+[profile.dev]
+opt-level = 1   # Make debug builds run faster
+panic = "abort" # This leads to better optimizations and smaller binaries.
+
+# Optimize all dependencies even in debug builds
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+# debug = true # good for profilers
+panic = "abort" # This leads to better optimizations and smaller binaries.
+
+[dependencies]
+common = { path = "../common" }
+server = { path = "../server" }
