@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/db/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/quick-kv/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/server/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cmds/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

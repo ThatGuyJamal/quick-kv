@@ -8,7 +8,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fcb3d4ff-bb48-4ef2-8b6b-4ceee48bb02a" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/crates/db/src/core.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/db/src/core.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/cmds/Cargo.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/cmds/src/lib.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/server/src/connection.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/server/src/frame.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/crates/server/src/shutdown.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/quick-kv.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/quick-kv.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/common/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/common/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/db/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/db/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/server/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/server/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/server/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/server/src/lib.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -31,10 +42,10 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "customColor": "",
-  "associatedIndex": 4
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 4
+}</component>
   <component name="ProjectId" id="2fL2fNLq83PKU3QwaM6McRTcHEl" />
   <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="2" id="Add" />
@@ -45,6 +56,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "ASKED_ADD_EXTERNAL_FILES": "true",
     "Cargo.Run quick-kv.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
@@ -112,11 +124,15 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1713566140400</updated>
-      <workItem from="1713566142367" duration="3494000" />
+      <workItem from="1713566142367" duration="3495000" />
+      <workItem from="1713623271584" duration="3997000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
   </component>
 </project>

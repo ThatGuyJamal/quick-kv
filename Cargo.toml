@@ -1,5 +1,5 @@
 [workspace]
-members = [
+members = [ "crates/cmds",
     "crates/common",
     "crates/db",
     "crates/quick-kv",
@@ -9,3 +9,5 @@ resolver = "2"
 
 [workspace.dependencies]
 tokio = { version = "1.37.0", features = ["full"] }
+bytes = "1.6.0"
+tracing = "0.1.40"
