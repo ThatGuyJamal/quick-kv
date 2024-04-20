@@ -9,15 +9,7 @@
   <component name="ChangeListManager">
     <list default="true" id="fcb3d4ff-bb48-4ef2-8b6b-4ceee48bb02a" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/cmds/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/cmds/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/common/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/common/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/db/src/core.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/db/src/core.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/db/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/db/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/quick-kv/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/quick-kv/src/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/server/src/connection.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/server/src/connection.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/server/src/frame.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/server/src/frame.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/server/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/server/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/server/src/shutdown.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/server/src/shutdown.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/quick-kv/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/quick-kv/Cargo.toml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -123,7 +115,7 @@
       <option name="presentableId" value="Default" />
       <updated>1713566140400</updated>
       <workItem from="1713566142367" duration="3495000" />
-      <workItem from="1713623271584" duration="4094000" />
+      <workItem from="1713623271584" duration="4338000" />
     </task>
     <servers />
   </component>
