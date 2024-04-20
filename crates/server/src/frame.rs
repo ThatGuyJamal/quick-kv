@@ -2,16 +2,18 @@
 //! parsing frames from a byte array.
 //! https://redis.io/docs/latest/develop/reference/protocol-spec/
 
-use bytes::{Buf, Bytes};
 use std::convert::TryInto;
 use std::fmt;
 use std::io::Cursor;
 use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 
+use bytes::{Buf, Bytes};
+
 /// A frame in the Redis protocol.
 #[derive(Clone, Debug)]
-pub enum Frame {
+pub enum Frame
+{
     Simple(String),
     Error(String),
     Integer(u64),
@@ -21,7 +23,8 @@ pub enum Frame {
 }
 
 #[derive(Debug)]
-pub enum Error {
+pub enum Error
+{
     /// Not enough data is available to parse a message
     Incomplete,
 
@@ -29,9 +32,11 @@ pub enum Error {
     Other(common::Error),
 }
 
-impl Frame {
+impl Frame
+{
     /// Returns an empty array
-    pub(crate) fn array() -> Frame {
+    pub(crate) fn array() -> Frame
+    {
         Frame::Array(vec![])
     }
 
@@ -40,7 +45,8 @@ impl Frame {
     /// # Panics
     ///
     /// panics if `self` is not an array
-    pub(crate) fn push_bulk(&mut self, bytes: Bytes) {
+    pub(crate) fn push_bulk(&mut self, bytes: Bytes)
+    {
         match self {
             Frame::Array(vec) => {
                 vec.push(Frame::Bulk(bytes));
@@ -54,7 +60,8 @@ impl Frame {
     /// # Panics
     ///
     /// panics if `self` is not an array
-    pub(crate) fn push_int(&mut self, value: u64) {
+    pub(crate) fn push_int(&mut self, value: u64)
+    {
         match self {
             Frame::Array(vec) => {
                 vec.push(Frame::Integer(value));
@@ -64,7 +71,8 @@ impl Frame {
     }
 
     /// Checks if an entire message can be decoded from `src`
-    pub fn check(src: &mut Cursor<&[u8]>) -> Result<(), Error> {
+    pub fn check(src: &mut Cursor<&[u8]>) -> Result<(), Error>
+    {
         match get_u8(src)? {
             b'+' => {
                 get_line(src)?;
@@ -104,7 +112,8 @@ impl Frame {
     }
 
     /// The message has already been validated with `check`.
-    pub fn parse(src: &mut Cursor<&[u8]>) -> Result<Frame, Error> {
+    pub fn parse(src: &mut Cursor<&[u8]>) -> Result<Frame, Error>
+    {
         match get_u8(src)? {
             b'+' => {
                 // Read the line and convert it to `Vec<u8>`
@@ -169,13 +178,16 @@ impl Frame {
     }
 
     /// Converts the frame to an "unexpected frame" error
-    pub(crate) fn to_error(&self) -> common::Error {
+    pub(crate) fn to_error(&self) -> common::Error
+    {
         format!("unexpected frame: {}", self).into()
     }
 }
 
-impl PartialEq<&str> for Frame {
-    fn eq(&self, other: &&str) -> bool {
+impl PartialEq<&str> for Frame
+{
+    fn eq(&self, other: &&str) -> bool
+    {
         match self {
             Frame::Simple(s) => s.eq(other),
             Frame::Bulk(s) => s.eq(other),
@@ -184,8 +196,10 @@ impl PartialEq<&str> for Frame {
     }
 }
 
-impl fmt::Display for Frame {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+impl fmt::Display for Frame
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result
+    {
         use std::str;
 
         match self {
@@ -213,7 +227,8 @@ impl fmt::Display for Frame {
     }
 }
 
-fn peek_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {
+fn peek_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error>
+{
     if !src.has_remaining() {
         return Err(Error::Incomplete);
     }
@@ -221,7 +236,8 @@ fn peek_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {
     Ok(src.chunk()[0])
 }
 
-fn get_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {
+fn get_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error>
+{
     if !src.has_remaining() {
         return Err(Error::Incomplete);
     }
@@ -229,7 +245,8 @@ fn get_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {
     Ok(src.get_u8())
 }
 
-fn skip(src: &mut Cursor<&[u8]>, n: usize) -> Result<(), Error> {
+fn skip(src: &mut Cursor<&[u8]>, n: usize) -> Result<(), Error>
+{
     if src.remaining() < n {
         return Err(Error::Incomplete);
     }
@@ -239,7 +256,8 @@ fn skip(src: &mut Cursor<&[u8]>, n: usize) -> Result<(), Error> {
 }
 
 /// Read a new-line terminated decimal
-fn get_decimal(src: &mut Cursor<&[u8]>) -> Result<u64, Error> {
+fn get_decimal(src: &mut Cursor<&[u8]>) -> Result<u64, Error>
+{
     use atoi::atoi;
 
     let line = get_line(src)?;
@@ -248,7 +266,8 @@ fn get_decimal(src: &mut Cursor<&[u8]>) -> Result<u64, Error> {
 }
 
 /// Find a line
-fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], Error> {
+fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], Error>
+{
     // Scan the bytes directly
     let start = src.position() as usize;
     // Scan to the second to last byte
@@ -267,34 +286,44 @@ fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], Error> {
     Err(Error::Incomplete)
 }
 
-impl From<String> for Error {
-    fn from(src: String) -> Error {
+impl From<String> for Error
+{
+    fn from(src: String) -> Error
+    {
         Error::Other(src.into())
     }
 }
 
-impl From<&str> for Error {
-    fn from(src: &str) -> Error {
+impl From<&str> for Error
+{
+    fn from(src: &str) -> Error
+    {
         src.to_string().into()
     }
 }
 
-impl From<FromUtf8Error> for Error {
-    fn from(_src: FromUtf8Error) -> Error {
+impl From<FromUtf8Error> for Error
+{
+    fn from(_src: FromUtf8Error) -> Error
+    {
         "protocol error; invalid frame format".into()
     }
 }
 
-impl From<TryFromIntError> for Error {
-    fn from(_src: TryFromIntError) -> Error {
+impl From<TryFromIntError> for Error
+{
+    fn from(_src: TryFromIntError) -> Error
+    {
         "protocol error; invalid frame format".into()
     }
 }
 
 impl std::error::Error for Error {}
 
-impl fmt::Display for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+impl fmt::Display for Error
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result
+    {
         match self {
             Error::Incomplete => "stream ended early".fmt(fmt),
             Error::Other(err) => err.fmt(fmt),

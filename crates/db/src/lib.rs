@@ -2,6 +2,7 @@ mod core;
 
 use std::collections::{BTreeSet, HashMap};
 use std::sync::{Arc, Mutex};
+
 use bytes::Bytes;
 use tokio::sync::{broadcast, Notify};
 use tokio::time::Instant;
@@ -10,7 +11,8 @@ use tokio::time::Instant;
 /// of the `Db` by signalling the background purge task to shut down when
 /// this struct is dropped.
 #[derive(Debug)]
-pub struct DbDropGuard {
+pub struct DbDropGuard
+{
     /// The `Db` instance that will be shut down when this `DbHolder` struct
     /// is dropped.
     db: Db,
@@ -29,14 +31,16 @@ pub struct DbDropGuard {
 /// runs until all instances of `Db` are dropped, at which point the task
 /// terminates.
 #[derive(Debug, Clone)]
-pub struct Db {
+pub struct Db
+{
     /// Handle to shared state. The background task will also have an
     /// `Arc<Shared>`.
     shared: Arc<Shared>,
 }
 
 #[derive(Debug)]
-struct Shared {
+struct Shared
+{
     /// The shared state is guarded by a mutex. This is a `std::sync::Mutex` and
     /// not a Tokio mutex. This is because there are no asynchronous operations
     /// being performed while holding the mutex. Additionally, the critical
@@ -58,7 +62,8 @@ struct Shared {
 }
 
 #[derive(Debug)]
-struct State {
+struct State
+{
     /// The key-value data. We are not trying to do anything fancy so a
     /// `std::collections::HashMap` works fine.
     entries: HashMap<String, Entry>,
@@ -87,7 +92,8 @@ struct State {
 
 /// Entry in the key-value store
 #[derive(Debug)]
-struct Entry {
+struct Entry
+{
     // The stored data
     data: Bytes,
     /// Instant at which the entry expires and should be removed from the

@@ -1,15 +1,17 @@
-mod frame;
 mod connection;
+mod frame;
 mod shutdown;
 
-use std::sync::{Arc, mpsc};
+use std::sync::{mpsc, Arc};
+
+use db::DbDropGuard;
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, Semaphore};
-use db::DbDropGuard;
 
 /// Server listener state. Performs TCP listening and init of per-connection state.
 #[derive(Debug)]
-struct Listener {
+struct Listener
+{
     /// Shared database handle.
     ///
     /// Contains the key / value store as well as the broadcast channels for

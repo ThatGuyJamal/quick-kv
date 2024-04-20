@@ -1,6 +1,7 @@
 use std::collections::{BTreeSet, HashMap};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+
 use bytes::Bytes;
 use tokio::sync::{broadcast, Notify};
 use tokio::time;
@@ -9,33 +10,38 @@ use tracing::debug;
 
 use crate::{Db, DbDropGuard, Entry, Shared, State};
 
-impl DbDropGuard {
+impl DbDropGuard
+{
     /// Create a new `DbHolder`, wrapping a `Db` instance. When this is dropped
     /// the `Db`'s purge task will be shut down.
-    pub fn new() -> Self {
-        Self {
-            db: Db::new()
-        }
+    pub fn new() -> Self
+    {
+        Self { db: Db::new() }
     }
 
     /// Get the shared database. Internally, this is an
     /// `Arc`, so a clone only increments the ref count.
-    pub fn db(&self) -> Db {
+    pub fn db(&self) -> Db
+    {
         self.db.clone()
     }
 }
 
-impl Drop for DbDropGuard {
-    fn drop(&mut self) {
+impl Drop for DbDropGuard
+{
+    fn drop(&mut self)
+    {
         // Signal the 'Db' instance to shut down the task that purges expired keys
         self.db.shutdown_purge_task();
     }
 }
 
-impl Db {
+impl Db
+{
     /// Create a new, empty, `Db` instance. Allocates shared state and spawns a
     /// background task to manage key expiration.
-    pub fn new() -> Db {
+    pub fn new() -> Db
+    {
         let shared = Arc::new(Shared {
             state: Mutex::new(State {
                 entries: HashMap::new(),
@@ -47,7 +53,7 @@ impl Db {
         });
 
         // Start the background task.
-        tokio::spawn(purge_expired_tasks(shared.clone())); 
+        tokio::spawn(purge_expired_tasks(shared.clone()));
 
         Db { shared }
     }
@@ -57,7 +63,8 @@ impl Db {
     /// Returns `None` if there is no value associated with the key. This may be
     /// due to never having assigned a value to the key or a previously assigned
     /// value expired.
-    pub fn get(&self, key: &str) -> Option<Bytes> {
+    pub fn get(&self, key: &str) -> Option<Bytes>
+    {
         // Acquire the lock, get the entry and clone the value.
         //
         // Because data is stored using `Bytes`, a clone here is a shallow
@@ -70,7 +77,8 @@ impl Db {
     /// Duration.
     ///
     /// If a value is already associated with the key, it is removed.
-    pub fn set(&self, key: String, value: Bytes, expire: Option<Duration>) {
+    pub fn set(&self, key: String, value: Bytes, expire: Option<Duration>)
+    {
         let mut state = self.shared.state.lock().unwrap();
 
         // If this `set` becomes the key that expires **next**, the background
@@ -87,22 +95,13 @@ impl Db {
             // Only notify the worker task if the newly inserted expiration is the
             // **next** key to evict. In this case, the worker needs to be woken up
             // to update its state.
-            notify = state
-                .next_expiration()
-                .map(|expiration| expiration > when)
-                .unwrap_or(true);
+            notify = state.next_expiration().map(|expiration| expiration > when).unwrap_or(true);
 
             when
         });
 
         // Insert the entry into the `HashMap`.
-        let prev = state.entries.insert(
-            key.clone(),
-            Entry {
-                data: value,
-                expires_at,
-            },
-        );
+        let prev = state.entries.insert(key.clone(), Entry { data: value, expires_at });
 
         // If there was a value previously associated with the key **and** it
         // had an expiration time. The associated entry in the `expirations` map
@@ -137,7 +136,8 @@ impl Db {
     ///
     /// The returned `Receiver` is used to receive values broadcast by `PUBLISH`
     /// commands.
-    pub fn subscribe(&self, key: String) -> broadcast::Receiver<Bytes> {
+    pub fn subscribe(&self, key: String) -> broadcast::Receiver<Bytes>
+    {
         use std::collections::hash_map::Entry;
 
         // Acquire the mutex
@@ -168,7 +168,8 @@ impl Db {
 
     /// Publish a message to the channel. Returns the number of subscribers
     /// listening on the channel.
-    pub fn publish(&self, key: &str, value: Bytes) -> usize {
+    pub fn publish(&self, key: &str, value: Bytes) -> usize
+    {
         let state = self.shared.state.lock().unwrap();
 
         state
@@ -185,7 +186,8 @@ impl Db {
 
     /// Signals the purge background task to shut down. This is called by the
     /// `DbShutdown`s `Drop` implementation.
-    fn shutdown_purge_task(&self) {
+    fn shutdown_purge_task(&self)
+    {
         // The background task must be signaled to shut down. This is done by
         // setting `State::shutdown` to `true` and signalling the task.
         let mut state = self.shared.state.lock().unwrap();
@@ -199,10 +201,12 @@ impl Db {
     }
 }
 
-impl Shared {
+impl Shared
+{
     /// Purge all expired keys and return the `Instant` at which the **next**
     /// key will expire. The background task will sleep until this instant.
-    fn purge_expired_keys(&self) -> Option<Instant> {
+    fn purge_expired_keys(&self) -> Option<Instant>
+    {
         let mut state = self.state.lock().unwrap();
 
         if state.shutdown {
@@ -240,17 +244,17 @@ impl Shared {
     ///
     /// The `shutdown` flag is set when all `Db` values have dropped, indicating
     /// that the shared state can no longer be accessed.
-    fn is_shutdown(&self) -> bool {
+    fn is_shutdown(&self) -> bool
+    {
         self.state.lock().unwrap().shutdown
     }
 }
 
-impl State {
-    fn next_expiration(&self) -> Option<Instant> {
-        self.expirations
-            .iter()
-            .next()
-            .map(|expiration| expiration.0)
+impl State
+{
+    fn next_expiration(&self) -> Option<Instant>
+    {
+        self.expirations.iter().next().map(|expiration| expiration.0)
     }
 }
 
@@ -258,7 +262,8 @@ impl State {
 ///
 /// Wait to be notified. On notification, purge any expired keys from the shared
 /// state handle. If `shutdown` is set, terminate the task.
-async fn purge_expired_tasks(shared: Arc<Shared>) {
+async fn purge_expired_tasks(shared: Arc<Shared>)
+{
     // If the shutdown flag is set, then the task should exit.
     while !shared.is_shutdown() {
         // Purge all keys that are expired. The function returns the instant at
