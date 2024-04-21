@@ -1,13 +1,14 @@
 use std::io;
 use std::io::Cursor;
+
 use bytes::{Buf, BytesMut};
+use common::Result;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
 use tokio::net::TcpStream;
 
-use common::Result;
 use crate::frame::Frame;
 
-// Default to a 8KB read buffer. 
+// Default to a 8KB read buffer.
 const _BYTE: usize = 1024;
 const _CAPACITY: usize = _BYTE * 8;
 
@@ -24,7 +25,8 @@ const _CAPACITY: usize = _BYTE * 8;
 /// When sending frames, the frame is first encoded into the write buffer.
 /// The contents of the write buffer are then written to the socket.
 #[derive(Debug)]
-pub struct Connection {
+pub struct Connection
+{
     // The `TcpStream`. It is decorated with a `BufWriter`, which provides write
     // level buffering. The `BufWriter` implementation provided by Tokio is
     // sufficient for our needs.
@@ -34,8 +36,10 @@ pub struct Connection {
     buffer: BytesMut,
 }
 
-impl Connection {
-    pub fn new(socket: TcpStream) -> Self {
+impl Connection
+{
+    pub fn new(socket: TcpStream) -> Self
+    {
         Self {
             stream: BufWriter::new(socket),
             buffer: BytesMut::with_capacity(_CAPACITY),
@@ -53,7 +57,8 @@ impl Connection {
     /// On success, the received frame is returned. If the `TcpStream`
     /// is closed in a way that doesn't break a frame in half, it returns
     /// `None`. Otherwise, an error is returned.
-    pub async fn read_frame(&mut self) -> Result<Option<Frame>> {
+    pub async fn read_frame(&mut self) -> Result<Option<Frame>>
+    {
         loop {
             // Attempt to parse a frame from the buffered data. If enough data
             // has been buffered, the frame is returned.
@@ -75,7 +80,7 @@ impl Connection {
                     Ok(None)
                 } else {
                     Err("connection reset by peer".into())
-                }
+                };
             }
         }
     }
@@ -84,7 +89,8 @@ impl Connection {
     /// data, the frame is returned and the data removed from the buffer. If not
     /// enough data has been buffered yet, `Ok(None)` is returned. If the
     /// buffered data does not represent a valid frame, `Err` is returned.
-    fn parse_frame(&mut self) -> Result<Option<Frame>> {
+    fn parse_frame(&mut self) -> Result<Option<Frame>>
+    {
         use crate::frame::FrameError::Incomplete;
 
         // Cursor is used to track the "current" location in the
@@ -153,7 +159,8 @@ impl Connection {
     /// sys calls. However, it is fine to call these functions on a *buffered*
     /// write stream. The data will be written to the buffer. Once the buffer is
     /// full, it is flushed to the underlying socket.
-    pub async fn write_frame(&mut self, frame: &Frame) -> io::Result<()> {
+    pub async fn write_frame(&mut self, frame: &Frame) -> io::Result<()>
+    {
         // Arrays are encoded by encoding each entry. All other frame types are
         // considered literals. For now, mini-redis is not able to encode
         // recursive frame structures. See below for more details.
@@ -181,7 +188,8 @@ impl Connection {
     }
 
     /// Write a frame literal to the stream
-    async fn write_value(&mut self, frame: &Frame) -> io::Result<()> {
+    async fn write_value(&mut self, frame: &Frame) -> io::Result<()>
+    {
         match frame {
             Frame::Simple(val) => {
                 self.stream.write_u8(b'+').await?;
@@ -219,7 +227,8 @@ impl Connection {
     }
 
     /// Write a decimal frame to the stream
-    async fn write_decimal(&mut self, val: u64) -> io::Result<()> {
+    async fn write_decimal(&mut self, val: u64) -> io::Result<()>
+    {
         use std::io::Write;
 
         // Convert the value to a string
@@ -233,5 +242,4 @@ impl Connection {
 
         Ok(())
     }
-
 }

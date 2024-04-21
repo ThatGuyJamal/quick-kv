@@ -196,7 +196,7 @@ impl Db
         // Drop the lock before signalling the background task. This helps
         // reduce lock contention by ensuring the background task doesn't
         // wake up only to be unable to acquire the mutex.
-        drop(state);
+        // drop(state);
         self.shared.background_task.notify_one();
     }
 }

@@ -8,8 +8,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fcb3d4ff-bb48-4ef2-8b6b-4ceee48bb02a" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/crates/db/src/test.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crates/quick-kv/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/crates/quick-kv/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/db/src/core.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/db/src/core.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crates/db/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/crates/db/src/lib.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -48,10 +50,13 @@
   "keyToString": {
     "ASKED_ADD_EXTERNAL_FILES": "true",
     "Cargo.Run quick-kv.executor": "Run",
+    "Cargo.Test test::tests.executor": "Run",
+    "Cargo.Test test::tests::test_shutdown_purge_task.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.rust.reset.selective.auto.import": "true",
     "git-widget-placeholder": "rewrite",
+    "last_opened_file_path": "/home/thatguyjamal/Code/projects/quick-kv/crates/cmds",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -64,10 +69,18 @@
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/crates/cmds" />
+      <recent name="$PROJECT_DIR$/crates/common" />
+      <recent name="$PROJECT_DIR$/crates/db" />
+      <recent name="$PROJECT_DIR$/crates/quick-kv" />
+    </key>
+  </component>
   <component name="RsExternalLinterProjectSettings">
     <option name="runOnTheFly" value="true" />
   </component>
-  <component name="RunManager" selected="Cargo.Run quick-kv">
+  <component name="RunManager" selected="Cargo.Test test::tests">
     <configuration name="Run quick-kv" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
       <option name="command" value="run --package quick-kv --bin quick-kv" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
@@ -102,6 +115,46 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
+    <configuration name="Test test::tests" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="command" value="test --package db --lib test::tests" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <option name="emulateTerminal" value="true" />
+      <option name="channel" value="DEFAULT" />
+      <option name="requiredFeatures" value="true" />
+      <option name="allFeatures" value="false" />
+      <option name="withSudo" value="false" />
+      <option name="buildTarget" value="REMOTE" />
+      <option name="backtrace" value="SHORT" />
+      <option name="isRedirectInput" value="false" />
+      <option name="redirectInputPath" value="" />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test test::tests::test_shutdown_purge_task" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="command" value="test --package db --lib test::tests::test_shutdown_purge_task -- --exact" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <option name="emulateTerminal" value="true" />
+      <option name="channel" value="DEFAULT" />
+      <option name="requiredFeatures" value="true" />
+      <option name="allFeatures" value="false" />
+      <option name="withSudo" value="false" />
+      <option name="buildTarget" value="REMOTE" />
+      <option name="backtrace" value="SHORT" />
+      <option name="isRedirectInput" value="false" />
+      <option name="redirectInputPath" value="" />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Cargo.Test test::tests" />
+        <item itemvalue="Cargo.Test test::tests::test_shutdown_purge_task" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="RustProjectSettings">
     <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
@@ -115,7 +168,8 @@
       <option name="presentableId" value="Default" />
       <updated>1713566140400</updated>
       <workItem from="1713566142367" duration="3495000" />
-      <workItem from="1713623271584" duration="4338000" />
+      <workItem from="1713623271584" duration="5128000" />
+      <workItem from="1713721673778" duration="3551000" />
     </task>
     <servers />
   </component>

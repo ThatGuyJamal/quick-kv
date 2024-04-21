@@ -1,4 +1,5 @@
 mod core;
+mod test;
 
 use std::collections::{BTreeSet, HashMap};
 use std::sync::{Arc, Mutex};

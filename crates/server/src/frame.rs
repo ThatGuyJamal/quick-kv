@@ -8,8 +8,8 @@ use std::io::Cursor;
 use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 
-use common::{Error, StdResult};
 use bytes::{Buf, Bytes};
+use common::{Error, StdResult};
 
 /// A frame in the Redis protocol.
 #[derive(Clone, Debug)]
