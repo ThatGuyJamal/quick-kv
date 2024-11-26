@@ -21,7 +21,7 @@ serde = { version = "1.0.188", features = ["derive"] }
 rayon = { version = "1.8.0" }
 simple_logger = { version = "4.2.0", features = ["colored"] }
 time = { version = "^0.3.29" }
-log = { version = "0.4.20" }
+log = { version = "0.4.21" }
 anyhow = "1.0.75"
 rustc-hash = "1.1.0"
 chrono = { version = "0.4.31", features = ["serde"] }
