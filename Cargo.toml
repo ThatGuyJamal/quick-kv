@@ -22,7 +22,7 @@ rayon = { version = "1.8.0" }
 simple_logger = { version = "4.2.0", features = ["colored"] }
 time = { version = "^0.3.29" }
 log = { version = "0.4.20" }
-anyhow = "1.0.75"
+anyhow = "1.0.80"
 rustc-hash = "1.1.0"
 chrono = { version = "0.4.31", features = ["serde"] }
 clap = { version = "4.4.6", features = ["derive"] }
